@@ -241,7 +241,7 @@ const generateUUID = () => {
 
   /**
    * Load all user data from Supabase and overwrite local state.
-   * Called once after login via initStore(userId).
+   * Only called explicitly upon user action (restoreFromCloud).
    */
   const loadFromSupabase = useCallback(async (userId) => {
     try {
@@ -259,15 +259,14 @@ const generateUUID = () => {
         supabase.from('service_log_components').select('*').eq('user_id', userId),
       ]);
 
-      if (vErr) { console.warn('[Supabase] vehicles fetch error:', vErr.message); return; }
-      if (cErr) { console.warn('[Supabase] components fetch error:', cErr.message); return; }
-      if (slErr) { console.warn('[Supabase] service_logs fetch error:', slErr.message); return; }
-      if (flErr) { console.warn('[Supabase] fuel_logs fetch error:', flErr.message); return; }
-      if (slcErr) { console.warn('[Supabase] service_log_components fetch error:', slcErr.message); }
+      if (vErr) throw vErr;
+      if (cErr) throw cErr;
+      if (slErr) throw slErr;
+      if (flErr) throw flErr;
+      if (slcErr) console.warn('[Supabase] service_log_components fetch error:', slcErr.message);
 
       if (!vehicles || vehicles.length === 0) {
-        // User has no cloud data yet — don't overwrite local starter data
-        return;
+        return { error: 'Tidak ada data garasi yang ditemukan di cloud untuk akun ini.' };
       }
 
       // Group junction records by service_log_id
@@ -295,61 +294,83 @@ const generateUUID = () => {
           fuelLogs: (fuelLogs || []).map(mapFuelLog),
         };
       });
+
+      return { success: true };
     } catch (err) {
       console.warn('[Supabase] loadFromSupabase unexpected error:', err);
+      return { error: err.message || 'Gagal mengambil data dari Supabase.' };
     }
   }, []);
 
   /**
-   * initStore — call this when the user's auth session becomes available.
+   * initStore — track authenticated user ID.
+   * Does NOT auto-fetch or overwrite local storage on boot, strictly preserving
+   * local offline-first mutations. Cloud sync is only invoked explicitly for backup/restore.
    */
-  const initStore = useCallback(
-    (userId) => {
-      userIdRef.current = userId;
-      if (userId) {
-        loadFromSupabase(userId);
-      }
-    },
-    [loadFromSupabase]
-  );
+  const initStore = useCallback((userId) => {
+    userIdRef.current = userId;
+  }, []);
 
-  // ── Supabase fire-and-forget wrappers ────────────────────────────────────────
+  // ── Supabase fire-and-forget wrappers (with offline/local guards) ───────────
+
+  const isCloudEligible = () => {
+    const uid = userIdRef.current;
+    if (!uid || uid === 'local_garage_user') return false;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return false;
+    return true;
+  };
 
   const sbUpsertVehicle = (vehicle) => {
+    if (!isCloudEligible()) return;
     const uid = userIdRef.current;
-    if (!uid) return;
-    supabase.from('vehicles').upsert(vehicleToRow(vehicle, uid)).then(({ error }) => {
-      if (error) console.warn('[Supabase] upsert vehicle error:', error.message);
-    });
+    supabase
+      .from('vehicles')
+      .upsert(vehicleToRow(vehicle, uid))
+      .then(({ error }) => {
+        if (error) console.warn('[Supabase] upsert vehicle error:', error.message);
+      })
+      .catch((err) => console.warn('[Supabase] sbUpsertVehicle caught:', err));
   };
 
   const sbDeleteVehicle = (vehicleId) => {
-    const uid = userIdRef.current;
-    if (!uid) return;
-    supabase.from('vehicles').delete().eq('id', vehicleId).then(({ error }) => {
-      if (error) console.warn('[Supabase] delete vehicle error:', error.message);
-    });
+    if (!isCloudEligible()) return;
+    supabase
+      .from('vehicles')
+      .delete()
+      .eq('id', vehicleId)
+      .then(({ error }) => {
+        if (error) console.warn('[Supabase] delete vehicle error:', error.message);
+      })
+      .catch((err) => console.warn('[Supabase] sbDeleteVehicle caught:', err));
   };
 
   const sbUpsertComponents = (components) => {
+    if (!isCloudEligible() || !components.length) return;
     const uid = userIdRef.current;
-    if (!uid || !components.length) return;
-    supabase.from('components').upsert(components.map((c) => componentToRow(c, uid))).then(({ error }) => {
-      if (error) console.warn('[Supabase] upsert components error:', error.message);
-    });
+    supabase
+      .from('components')
+      .upsert(components.map((c) => componentToRow(c, uid)))
+      .then(({ error }) => {
+        if (error) console.warn('[Supabase] upsert components error:', error.message);
+      })
+      .catch((err) => console.warn('[Supabase] sbUpsertComponents caught:', err));
   };
 
   const sbDeleteComponent = (componentId) => {
-    const uid = userIdRef.current;
-    if (!uid) return;
-    supabase.from('components').delete().eq('id', componentId).then(({ error }) => {
-      if (error) console.warn('[Supabase] delete component error:', error.message);
-    });
+    if (!isCloudEligible()) return;
+    supabase
+      .from('components')
+      .delete()
+      .eq('id', componentId)
+      .then(({ error }) => {
+        if (error) console.warn('[Supabase] delete component error:', error.message);
+      })
+      .catch((err) => console.warn('[Supabase] sbDeleteComponent caught:', err));
   };
 
   const sbInsertServiceLog = async (log) => {
+    if (!isCloudEligible()) return;
     const uid = userIdRef.current;
-    if (!uid) return;
     try {
       const { error } = await supabase.from('service_logs').insert(serviceLogToRow(log, uid));
       if (error) {
@@ -375,28 +396,176 @@ const generateUUID = () => {
   };
 
   const sbDeleteServiceLog = (logId) => {
-    const uid = userIdRef.current;
-    if (!uid) return;
-    supabase.from('service_logs').delete().eq('id', logId).then(({ error }) => {
-      if (error) console.warn('[Supabase] delete service_log error:', error.message);
-    });
+    if (!isCloudEligible()) return;
+    supabase
+      .from('service_logs')
+      .delete()
+      .eq('id', logId)
+      .then(({ error }) => {
+        if (error) console.warn('[Supabase] delete service_log error:', error.message);
+      })
+      .catch((err) => console.warn('[Supabase] sbDeleteServiceLog caught:', err));
   };
 
   const sbInsertFuelLog = (log) => {
+    if (!isCloudEligible()) return;
     const uid = userIdRef.current;
-    if (!uid) return;
-    supabase.from('fuel_logs').insert(fuelLogToRow(log, uid)).then(({ error }) => {
-      if (error) console.warn('[Supabase] insert fuel_log error:', error.message);
-    });
+    supabase
+      .from('fuel_logs')
+      .insert(fuelLogToRow(log, uid))
+      .then(({ error }) => {
+        if (error) console.warn('[Supabase] insert fuel_log error:', error.message);
+      })
+      .catch((err) => console.warn('[Supabase] sbInsertFuelLog caught:', err));
   };
 
   const sbDeleteFuelLog = (logId) => {
-    const uid = userIdRef.current;
-    if (!uid) return;
-    supabase.from('fuel_logs').delete().eq('id', logId).then(({ error }) => {
-      if (error) console.warn('[Supabase] delete fuel_log error:', error.message);
-    });
+    if (!isCloudEligible()) return;
+    supabase
+      .from('fuel_logs')
+      .delete()
+      .eq('id', logId)
+      .then(({ error }) => {
+        if (error) console.warn('[Supabase] delete fuel_log error:', error.message);
+      })
+      .catch((err) => console.warn('[Supabase] sbDeleteFuelLog caught:', err));
   };
+
+  /**
+   * Explicitly backup the entire local garage state to cloud Supabase
+   */
+  const backupToCloud = useCallback(
+    async (explicitUserId) => {
+      const uid = explicitUserId || userIdRef.current;
+      if (!uid || uid === 'local_garage_user') {
+        return { error: 'Harap masuk ke akun cloud Supabase terlebih dahulu.' };
+      }
+      try {
+        // 1. Sync Vehicles (prune deleted vehicles from cloud)
+        const currentVehicleIds = (garageData.vehicles || []).map((v) => v.id);
+        const { data: existingVehicles } = await supabase
+          .from('vehicles')
+          .select('id')
+          .eq('user_id', uid);
+        if (existingVehicles && existingVehicles.length > 0) {
+          const toDelete = existingVehicles
+            .filter((ev) => !currentVehicleIds.includes(ev.id))
+            .map((ev) => ev.id);
+          if (toDelete.length > 0) {
+            await supabase.from('vehicles').delete().in('id', toDelete);
+          }
+        }
+        if (garageData.vehicles && garageData.vehicles.length > 0) {
+          const vRows = garageData.vehicles.map((v) => vehicleToRow(v, uid));
+          const { error: vErr } = await supabase.from('vehicles').upsert(vRows);
+          if (vErr) throw vErr;
+        }
+
+        // 2. Sync Components (prune deleted components from cloud)
+        const currentCompIds = (garageData.components || []).map((c) => c.id);
+        const { data: existingComps } = await supabase
+          .from('components')
+          .select('id')
+          .eq('user_id', uid);
+        if (existingComps && existingComps.length > 0) {
+          const toDelete = existingComps
+            .filter((ec) => !currentCompIds.includes(ec.id))
+            .map((ec) => ec.id);
+          if (toDelete.length > 0) {
+            await supabase.from('components').delete().in('id', toDelete);
+          }
+        }
+        if (garageData.components && garageData.components.length > 0) {
+          const cRows = garageData.components.map((c) => componentToRow(c, uid));
+          const { error: cErr } = await supabase.from('components').upsert(cRows);
+          if (cErr) throw cErr;
+        }
+
+        // 3. Sync Service Logs (prune deleted logs from cloud)
+        const currentLogIds = (garageData.serviceLogs || []).map((l) => l.id);
+        const { data: existingLogs } = await supabase
+          .from('service_logs')
+          .select('id')
+          .eq('user_id', uid);
+        if (existingLogs && existingLogs.length > 0) {
+          const toDelete = existingLogs
+            .filter((el) => !currentLogIds.includes(el.id))
+            .map((el) => el.id);
+          if (toDelete.length > 0) {
+            await supabase.from('service_logs').delete().in('id', toDelete);
+          }
+        }
+        if (garageData.serviceLogs && garageData.serviceLogs.length > 0) {
+          const slRows = garageData.serviceLogs.map((l) => serviceLogToRow(l, uid));
+          const { error: slErr } = await supabase.from('service_logs').upsert(slRows);
+          if (slErr) throw slErr;
+        }
+
+        // 4. Sync Service Log Components junction table
+        await supabase.from('service_log_components').delete().eq('user_id', uid);
+        const junctionRows = [];
+        (garageData.serviceLogs || []).forEach((log) => {
+          if (Array.isArray(log.replacedComponentIds)) {
+            log.replacedComponentIds.forEach((compId) => {
+              const comp = (garageData.components || []).find((c) => c.id === compId);
+              junctionRows.push({
+                service_log_id: log.id,
+                component_id: compId,
+                user_id: uid,
+                component_name: comp?.name || 'Komponen',
+              });
+            });
+          }
+        });
+        if (junctionRows.length > 0) {
+          const { error: jErr } = await supabase.from('service_log_components').insert(junctionRows);
+          if (jErr) throw jErr;
+        }
+
+        // 5. Sync Fuel Logs (prune deleted fuel logs from cloud)
+        const currentFuelIds = (garageData.fuelLogs || []).map((f) => f.id);
+        const { data: existingFuels } = await supabase
+          .from('fuel_logs')
+          .select('id')
+          .eq('user_id', uid);
+        if (existingFuels && existingFuels.length > 0) {
+          const toDelete = existingFuels
+            .filter((ef) => !currentFuelIds.includes(ef.id))
+            .map((ef) => ef.id);
+          if (toDelete.length > 0) {
+            await supabase.from('fuel_logs').delete().in('id', toDelete);
+          }
+        }
+        if (garageData.fuelLogs && garageData.fuelLogs.length > 0) {
+          const flRows = garageData.fuelLogs.map((f) => fuelLogToRow(f, uid));
+          const { error: flErr } = await supabase.from('fuel_logs').upsert(flRows);
+          if (flErr) throw flErr;
+        }
+
+        const now = new Date().toISOString();
+        setGarageData((prev) => ({ ...prev, lastCloudBackup: now }));
+        return { success: true, timestamp: now };
+      } catch (err) {
+        console.warn('[Supabase] backupToCloud error:', err);
+        return { error: err.message || 'Gagal mencadangkan ke cloud.' };
+      }
+    },
+    [garageData]
+  );
+
+  /**
+   * Explicitly restore all cloud data into local garage state
+   */
+  const restoreFromCloud = useCallback(
+    async (explicitUserId) => {
+      const uid = explicitUserId || userIdRef.current;
+      if (!uid || uid === 'local_garage_user') {
+        return { error: 'Harap masuk ke akun cloud Supabase terlebih dahulu.' };
+      }
+      return await loadFromSupabase(uid);
+    },
+    [loadFromSupabase]
+  );
 
   // ── Derived state ────────────────────────────────────────────────────────────
 
@@ -829,24 +998,47 @@ const generateUUID = () => {
     }));
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /** Export all garage data to downloadable JSON file */
-  const exportGarageBackupJSON = useCallback(() => {
+  /** Export all garage data to downloadable or shareable JSON file */
+  const exportGarageBackupJSON = useCallback(async () => {
     const payload = {
       ...garageData,
-      version: '1.1.0',
+      version: '1.2.0',
       exportedAt: new Date().toISOString(),
     };
     const jsonStr = JSON.stringify(payload, null, 2);
-    const blob = new Blob([jsonStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
     const dateStr = new Date().toISOString().split('T')[0];
-    a.href = url;
-    a.download = `velo-moto-garage-backup-${dateStr}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    const fileName = `velo-moto-garage-backup-${dateStr}.json`;
+
+    // 1. Try modern Web Share API (native sheet on Android WebView)
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        const file = new File([jsonStr], fileName, { type: 'application/json' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            title: 'Velo Moto Garage Backup',
+            files: [file],
+          });
+          return;
+        }
+      } catch (shareErr) {
+        if (shareErr.name === 'AbortError') return; // User simply closed the share sheet
+      }
+    }
+
+    // 2. Standard DOM blob download fallback (desktop browsers)
+    try {
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (blobErr) {
+      console.warn('Export blob failed:', blobErr);
+    }
   }, [garageData]);
 
   /** Import garage data from a parsed JSON object or text string */
@@ -911,5 +1103,8 @@ const generateUUID = () => {
     importGarageBackupJSON,
     resetToSampleData,
     initStore,
+    backupToCloud,
+    restoreFromCloud,
+    lastCloudBackup: garageData.lastCloudBackup || null,
   };
 }

@@ -29,3 +29,10 @@ dist-ssr
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Android / Mobile Builds
+*.apk
+*.aab
+android/.gradle/
+android/app/build/
+android/build/

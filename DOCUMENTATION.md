@@ -1,6 +1,6 @@
 # 📘 DOKUMENTASI SISTEM: VELO & MOTO GARAGE LOGBOOK
 
-Aplikasi manajemen pemeliharaan multi-kendaraan (**Mobil, Motor, dan Sepeda**) berarsitektur **Local-First Web Application** dengan antarmuka bertema **Tactical Garage Dark Theme**.
+Aplikasi manajemen pemeliharaan multi-kendaraan (**Mobil, Motor, dan Sepeda**) berarsitektur **Hybrid Local-First & Cloud-Enabled Web + Android Mobile Application** dengan antarmuka bertema **Tactical Garage Dark Theme**.
 
 ---
 
@@ -8,28 +8,34 @@ Aplikasi manajemen pemeliharaan multi-kendaraan (**Mobil, Motor, dan Sepeda**) b
 1. [Ringkasan Eksekutif & Konsep Dasar](#1-ringkasan-eksekutif--konsep-dasar)
 2. [Arsitektur Sistem & Diagram](#2-arsitektur-sistem--diagram)
 3. [Teknologi & Dependensi (Tech Stack)](#3-teknologi--dependensi-tech-stack)
-4. [Struktur Folder & Penjelasan File](#4-struktur-folder--penjelasan-file)
+4. [Struktur Folder & Penjelasan Berkas](#4-struktur-folder--penjelasan-berkas)
 5. [Skema Data & Entitas Penyimpanan](#5-skema-data--entitas-penyimpanan)
 6. [Panduan Fitur & Modul Fungsional](#6-panduan-fitur--modul-fungsional)
-   - [A. Manajemen Armada (Multi-Vehicle Fleet)](#a-manajemen-armada-multi-vehicle-fleet)
-   - [B. Telemetri & Pemantauan Kesehatan Part](#b-telemetri--pemantauan-kesehatan-part)
-   - [C. Logbook Servis & Analisis Biaya (Rp / km)](#c-logbook-servis--analisis-biaya-rp--km)
+   - [A. Manajemen Armada & Odometer Guard](#a-manajemen-armada--odometer-guard)
+   - [B. Mesin Keausan Part Ganda (Dual-Threshold Wear Engine)](#b-mesin-keausan-part-ganda-dual-threshold-wear-engine)
+   - [C. Logbook Servis & Analisis Biaya Riil (Rp / km)](#c-logbook-servis--analisis-biaya-riil-rp--km)
    - [D. Kalkulator Teknis & Utilitas Adaptif](#d-kalkulator-teknis--utilitas-adaptif)
-   - [E. Cadangan Data & Pemulihan (Local-First Backup)](#e-cadangan-data--pemulihan-local-first-backup)
-7. [Formulasi Matematika & Algoritma](#7-formulasi-matematika--algoritma)
-8. [Preset Suku Cadang Standar Pabrikan](#8-preset-suku-cadang-standar-pabrikan)
-9. [Panduan Instalasi, Menjalankan, & Build](#9-panduan-instalasi-menjalankan--build)
-10. [FAQ & Pemecahan Masalah](#10-faq--pemecahan-masalah)
+   - [E. Cadangan Data: Local-First JSON & Supabase Cloud Sync](#e-cadangan-data-local-first-json--supabase-cloud-sync)
+   - [F. Integrasi Mobile Native Android (Capacitor)](#f-integrasi-mobile-native-android-capacitor)
+   - [G. Interaktivitas & Animasi UI](#g-interaktivitas--animasi-ui)
+7. [Pengujian Otomatis (Automated Unit Testing)](#7-pengujian-otomatis-automated-unit-testing)
+8. [Formulasi Matematika & Algoritma](#8-formulasi-matematika--algoritma)
+9. [Preset Suku Cadang Standar Pabrikan](#9-preset-suku-cadang-standar-pabrikan)
+10. [Panduan Instalasi, Menjalankan, & Build (Web & Android APK)](#10-panduan-instalasi-menjalankan--build-web--android-apk)
+11. [FAQ & Pemecahan Masalah](#11-faq--pemecahan-masalah)
 
 ---
 
 ## 1. Ringkasan Eksekutif & Konsep Dasar
 
-**Velo & Moto Garage Logbook** dirancang untuk pemilik multi-kendaraan yang membutuhkan sistem pencatatan pemeliharaan terstruktur, pemantauan masa pakai suku cadang (*wearable parts*), serta alat bantu kalkulasi teknis otomotif dan sepeda balap tanpa ketergantungan pada backend server pihak ketiga (*zero external backend*).
+**Velo & Moto Garage Logbook** dirancang untuk pemilik multi-kendaraan yang membutuhkan sistem pencatatan pemeliharaan terstruktur, pemantauan masa pakai suku cadang (*wearable parts*), serta alat bantu kalkulasi teknis otomotif dan sepeda balap yang dapat diakses secara instan baik melalui **Web Browser** maupun sebagai **Aplikasi Native Android (APK)**.
 
 ### 🌟 Nilai Utama Sistem
-- **Local-First & Privasi Mutlak:** Seluruh data (riwayat servis, pelat nomor, pengeluaran, rute) tersimpan 100% di browser pengguna melalui `localStorage`. Tidak ada data yang dikirim atau bocor ke server pihak ketiga.
-- **Prediksi Keausan Berbasis Odometer:** Setiap suku cadang memiliki *baseline* pemasangan dan target interval penggantian dalam kilometer.
+- **Zero-Barrier Offline-First:** Aplikasi dapat langsung dipakai seketika tanpa kewajiban login (*no login wall*). Semua data tersimpan aman secara lokal di `localStorage`.
+- **Opsional Cloud Sync (Supabase):** Pengguna dapat memilih untuk masuk menggunakan Email/Password atau Google Auth untuk mencadangkan data ke cloud dan memulihkannya di perangkat lain kapan saja.
+- **Dukungan Native Android (Capacitor):** Mendukung gesture hardware tombol kembali (*native back button*), penyesuaian status bar gelap, area notch/layar penuh (*safe area insets*), serta Web Share API untuk membagikan file backup langsung ke WhatsApp, Google Drive, atau Telegram.
+- **Dual-Threshold Wear Prediction:** Menghitung sisa masa pakai suku cadang berdasarkan **Jarak Tempuh (Kilometer)** DAN **Waktu (Bulan)** secara simultan (misalnya: ganti oli tiap 5.000 km atau maksimal 6 bulan).
+- **Odometer Input Guard:** Sistem validasi cerdas yang mencegah kekeliruan input angka odometer mundur atau lonjakan drastis tidak wajar (>15.000 km dalam satu kali input).
 - **Analisis Biaya Riil ($\text{Rp} / \text{km}$):** Menghitung rasio pengeluaran per kilometer yang ditempuh secara transparan.
 - **Estetika Tactical Garage:** Desain gelap beresolusi kontras tinggi (Slate-950/900, Zinc-800, aksen Emerald/Amber/Rose) dengan tipografi monospace JetBrains Mono untuk angka telemetri.
 
@@ -37,40 +43,54 @@ Aplikasi manajemen pemeliharaan multi-kendaraan (**Mobil, Motor, dan Sepeda**) b
 
 ## 2. Arsitektur Sistem & Diagram
 
-Aplikasi mengadopsi pola **Single Page Application (SPA)** reaktif dengan state terpusat melalui Custom Hook yang secara otomatis menyinkronkan perubahan ke browser storage.
+Aplikasi mengadopsi pola **Hybrid Architecture**: Single Page Application (SPA) reaktif berbasis React 18 yang dikemas dengan Capacitor untuk lingkungan mobile Android, didukung penyimpanan lokal dan sinkronisasi cloud opsional.
 
 ### A. Diagram Arsitektur Komponen
 
 ```mermaid
 flowchart TD
-    subgraph UI_Layer ["Antarmuka Pengguna (UI Layer)"]
-        Sidebar["Sidebar Navigation"]
-        Header["Header & Vehicle Switcher"]
-        DashView["Dashboard Tab"]
-        HealthView["Component Health Tab"]
-        LogView["Service Logbook Tab"]
-        ToolsView["Technical Calculators Tab"]
+    subgraph Client_App ["Aplikasi Klien (Web & Android Native)"]
+        subgraph UI_Layer ["Antarmuka Pengguna (UI Layer)"]
+            Sidebar["Sidebar Navigation (Desktop)"]
+            BottomNav["Bottom Navigation Bar & FAB (Mobile)"]
+            Header["Header, Switcher & User Menu"]
+            DashView["Dashboard Tab"]
+            HealthView["Component Health Tab"]
+            LogView["Service Logbook Tab"]
+            ToolsView["Technical Calculators Tab"]
+        end
+
+        subgraph Modals ["Modals & Overlays"]
+            QuickOdo["Quick Odometer Modal"]
+            AddVeh["Add Vehicle Modal"]
+            ResetSvc["Service Reset Modal"]
+            AddSvc["Add Service Log Modal"]
+            ImportExp["JSON Backup / Restore Modal"]
+            CloudSync["Cloud Sync Modal (Supabase)"]
+        end
+
+        subgraph Native_Bridge ["Capacitor Native Bridge (Android)"]
+            BackButton["Hardware Back Button Listener"]
+            StatusBarMod["Dark Status Bar Controller"]
+            WebShare["Native Web Share API"]
+        end
+
+        subgraph State_Layer ["State & Store"]
+            AuthCtx["AuthContext (Local / Supabase)"]
+            Store["useGarageStore() Hook"]
+        end
     end
 
-    subgraph Modals ["Modals & Overlays"]
-        QuickOdo["Quick Odometer Modal"]
-        AddVeh["Add Vehicle Modal"]
-        ResetSvc["Service Reset Modal"]
-        AddSvc["Add Service Log Modal"]
-        ImportExp["Import / Export JSON Modal"]
-    end
-
-    subgraph State_Layer ["State Management Hook"]
-        Store["useGarageStore()"]
-    end
-
-    subgraph Storage_Layer ["Persistensi Lokal"]
+    subgraph Storage_Layer ["Persistensi Data"]
         LocalStorage[("Browser LocalStorage: garage_logbook_v1")]
-        JSONBackup[("Ekspor File JSON")]
+        JSONBackup[("File Backup .json")]
+        SupabaseCloud[("Supabase PostgreSQL Cloud DB")]
     end
 
     Header --> Store
+    Header --> AuthCtx
     Sidebar --> Store
+    BottomNav --> Store
     DashView --> Store
     HealthView --> Store
     LogView --> Store
@@ -81,29 +101,25 @@ flowchart TD
     ResetSvc --> Store
     AddSvc --> Store
     ImportExp --> Store
+    CloudSync --> Store
+    CloudSync --> AuthCtx
 
+    BackButton --> Modals
+    BackButton --> DashView
     Store <--> LocalStorage
     Store <--> JSONBackup
+    Store -.->|"Opsional (Backup / Restore)"| SupabaseCloud
 ```
 
-### B. Diagram Alur Data Servis & Reset Part
+### B. Diagram Alur Navigasi Hardware Back Button Android
 
 ```mermaid
-sequenceDiagram
-    autonumber
-    actor User as Pengguna
-    participant UI as Komponen UI / Modal
-    participant Store as useGarageStore Hook
-    participant Storage as localStorage
-
-    User->>UI: Klik "Servis Sekarang" pada Part
-    UI->>User: Buka Modal Reset & Input Biaya/Bengkel
-    User->>UI: Simpan (Submit Form)
-    UI->>Store: resetComponentService(componentId, serviceDetails)
-    Store->>Store: 1. Update installedAtKm = currentOdo
-    Store->>Store: 2. Tambahkan entri baru ke serviceLogs
-    Store->>Storage: Simpan state baru ke garage_logbook_v1
-    Storage-->>UI: Re-render reaktif (Health bar kembali 100% AMAN)
+flowchart TD
+    PressBack["Pengguna Menekan Tombol Back Android"] --> CheckModal{"Apakah ada Modal Terbuka?"}
+    CheckModal -- "Ya" --> CloseModal["Tutup Modal Terbuka"]
+    CheckModal -- "Tidak" --> CheckTab{"Apakah sedang di Tab Dashboard?"}
+    CheckTab -- "Tidak" --> GoDash["Pindah ke Tab Dashboard"]
+    CheckTab -- "Ya" --> ExitApp["Keluar dari Aplikasi (Capacitor ExitApp)"]
 ```
 
 ---
@@ -112,59 +128,79 @@ sequenceDiagram
 
 | Kategori | Modul / Library | Versi | Peran dalam Sistem |
 |---|---|---|---|
-| **Core Framework** | React | `^18.3.1` | Komponen fungsional & hook siklus hidup |
-| **DOM Engine** | React-DOM | `^18.3.1` | Rendering DOM pada browser |
-| **Bundler & Build** | Vite | `^6.0.5` | Dev-server kilat berbasis ES Modules & compiler bundel |
-| **Styling** | Tailwind CSS | `^3.4.17` | Utility-first styling dengan palet warna dark taktikal |
-| **CSS Post-processor** | PostCSS & Autoprefixer | `^8.4.49` | Kompatibilitas browser modern |
-| **Icon Pack** | Lucide React | `^0.468.0` | Ikon visual SVG minimalis & adaptif |
-| **Tipografi** | Inter & JetBrains Mono | Google Fonts | Inter untuk antarmuka teks, JetBrains Mono untuk angka telemetri |
+| **Core Framework** | React | `^18.3.1` | Komponen fungsional & arsitektur declarative UI |
+| **DOM Engine** | React-DOM | `^18.3.1` | Rendering aplikasi web pada DOM |
+| **Bundler & Build Tool** | Vite | `^6.0.5` | Kompiler aset super cepat dengan ES Modules |
+| **Mobile Runtime** | `@capacitor/core` & `@capacitor/android` | `^8.5.3` | Konversi web app ke Native Android APK |
+| **Mobile Plugins** | `@capacitor/app` & `@capacitor/status-bar` | `^8.x` | Kontrol tombol back hardware & tema status bar |
+| **Backend & Cloud Auth** | `@supabase/supabase-js` | `^2.118.0` | Autentikasi pengguna & sinkronisasi data cloud |
+| **Styling & Theme** | Tailwind CSS & PostCSS | `^3.4.17` | Utility-first CSS tema Tactical Garage |
+| **Animasi & Motion** | `framer-motion` | `^11.15.0` | Transisi halaman halus & animasi modal |
+| **Efek Visual / Mikro** | `canvas-confetti` | `^1.9.4` | Efek konfeti selebrasi saat reset part/servis |
+| **Iconography** | `lucide-react` | `^0.468.0` | Kumpulan ikon SVG konsisten |
+| **Tipografi** | Inter & JetBrains Mono | Font | Inter untuk teks UI, JetBrains Mono untuk angka |
+| **Unit Testing** | Node.js Test Runner (`node --test`) | Built-in Node | Menjalankan 10 suite pengujian logika tanpa dependency berat |
 
 ---
 
-## 4. Struktur Folder & Penjelasan File
+## 4. Struktur Folder & Penjelasan Berkas
 
 ```plaintext
 d:\garage-logbook\
-├── docs\
+├── android/                            # Proyek native Android (Gradle, Manifest, Java wrapper)
+├── docs/
 │   ├── ARCHITECTURE.md                 # Dokumen blueprint arsitektur v1.0
 │   └── DOKUMENTASI_LENGKAP.md          # Dokumentasi teknis versi markdown docs
-├── src\
-│   ├── components\
-│   │   ├── components-health\
-│   │   │   ├── AddComponentModal.jsx   # Modal tambah suku cadang baru secara manual
-│   │   │   ├── ComponentCard.jsx       # Kartu visual wear bar indikator warna & tombol aksi
-│   │   │   ├── ComponentHealthView.jsx # Tampilan tab kesehatan part (Grid & Tabel, Filter)
+├── src/
+│   ├── components/
+│   │   ├── auth/
+│   │   │   ├── AuthScreen.jsx          # Tampilan layar autentikasi standalone
+│   │   │   └── UserMenu.jsx            # Dropdown menu status pengguna & koneksi cloud
+│   │   ├── common/
+│   │   │   └── CelebrationToast.jsx    # Komponen toast notifikasi selebrasi konfeti
+│   │   ├── components-health/
+│   │   │   ├── AddComponentModal.jsx   # Modal tambah suku cadang baru manual
+│   │   │   ├── ComponentCard.jsx       # Kartu visual wear bar indikator status & tombol aksi
+│   │   │   ├── ComponentHealthView.jsx # Tampilan tab kesehatan part (Grid, Tabel, Filter)
 │   │   │   └── ServiceResetModal.jsx   # Modal one-click reset & catat pengeluaran servis
-│   │   ├── dashboard\
+│   │   ├── dashboard/
 │   │   │   └── Dashboard.jsx           # Beranda telemetry Odo, ringkasan part kritis, & biaya
-│   │   ├── layout\
+│   │   ├── layout/
 │   │   │   ├── AddVehicleModal.jsx     # Formulir pendaftaran unit kendaraan baru
+│   │   │   ├── BottomNavBar.jsx        # Floating Bottom Navigation Bar responsif + tombol FAB
+│   │   │   ├── CloudSyncModal.jsx      # Modal login, pendaftaran, backup & restore cloud
 │   │   │   ├── Header.jsx              # Navbar atas, selector kendaraan, & tombol Quick Odo
 │   │   │   ├── ImportModal.jsx         # Modal upload atau tempel JSON backup data
 │   │   │   ├── QuickOdoModal.jsx       # Modal update cepat kilometer kendaraan
-│   │   │   ├── Sidebar.jsx             # Navigasi samping dengan counter badge status kritis
+│   │   │   ├── Sidebar.jsx             # Navigasi samping desktop dengan counter badge kritis
 │   │   │   └── VehicleSelector.jsx     # Menu drop-down pergantian unit aktif
-│   │   ├── logbook\
+│   │   ├── logbook/
 │   │   │   ├── AddServiceLogModal.jsx  # Modal catat servis baru + multi-reset suku cadang
 │   │   │   ├── CostAnalyticsCards.jsx  # Kartu metrik total biaya & biaya per km (Rp/km)
 │   │   │   └── ServiceLogbookView.jsx  # Riwayat log servis, pencarian, filter, & sortir
-│   │   └── tools\
+│   │   └── tools/
 │   │       ├── BikeCalculators.jsx     # Kalkulator tekanan ban Frank Berto & gear ratio
 │   │       ├── FuelCalculator.jsx      # Kalkulator konsumsi BBM (km/L) & estimasi biaya trip
 │   │       ├── TaxReminderCard.jsx     # Peringatan jatuh tempo Pajak STNK 1 Thn & Plat 5 Thn
 │   │       └── ToolsView.jsx           # Kontainer kalkulator adaptif sesuai tipe kendaraan
-│   ├── data\
+│   ├── context/
+│   │   └── AuthContext.jsx             # Provider autentikasi offline-first & Supabase bridge
+│   ├── data/
 │   │   └── presets.js                  # Starter fleet, preset suku cadang pabrikan, & paket servis
-│   ├── hooks\
-│   │   └── useGarageStore.js           # Custom hook manajemen state utama & LocalStorage sync
-│   ├── utils\
-│   │   └── calculators.js              # Kumpulan fungsi murni kalkulasi (health, BBM, tekanan ban)
-│   ├── App.jsx                         # Shell aplikasi utama & router navigasi tab
-│   ├── index.css                       # Definisi Tailwind directives & styling global
+│   ├── hooks/
+│   │   └── useGarageStore.js           # Custom hook manajemen state utama & sinkronisasi ganda
+│   ├── utils/
+│   │   ├── calculators.js              # Kumpulan fungsi kalkulasi (dual-threshold, BBM, tekanan ban)
+│   │   └── supabaseClient.js           # Inisialisasi klien Supabase JS
+│   ├── App.jsx                         # Shell aplikasi utama, handler back button, & safe-area
+│   ├── index.css                       # Definisi Tailwind directives & safe-area insets
 │   └── main.jsx                        # Entry point eksekusi React ke DOM
+├── tests/
+│   └── test-logic.mjs                  # Pengujian otomatis logika bisnis (10 test cases)
+├── capacitor.config.json               # Konfigurasi aplikasi native Capacitor
+├── garage-logbook.apk                  # Berkas rilis installer APK Android siap pasang
 ├── DOCUMENTATION.md                    # Dokumentasi komprehensif sistem (file ini)
-├── index.html                          # Template berkas HTML root
+├── README.md                           # Ringkasan proyek & panduan cepat
 ├── package.json                        # Konfigurasi dependensi dan skrip proyek
 ├── tailwind.config.js                  # Konfigurasi tema warna dan font Tailwind
 └── vite.config.js                      # Konfigurasi bundler Vite
@@ -174,14 +210,15 @@ d:\garage-logbook\
 
 ## 5. Skema Data & Entitas Penyimpanan
 
-Semua state garasi disatukan di bawah satu kunci penyimpanan `localStorage`: `garage_logbook_v1`.
+Semua state garasi disatukan di bawah satu kunci penyimpanan `localStorage`: `garage_logbook_v1`, dan dapat disinkronkan secara fleksibel ke tabel PostgreSQL Supabase.
 
 ### A. Struktur Root JSON
 ```json
 {
   "version": "1.2.0",
-  "exportedAt": "2026-10-20T09:00:00.000Z",
+  "exportedAt": "2026-10-21T05:00:00.000Z",
   "activeVehicleId": "veh_civic_001",
+  "lastCloudBackup": "2026-10-21T04:30:00.000Z",
   "vehicles": [],
   "components": [],
   "serviceLogs": [],
@@ -189,314 +226,258 @@ Semua state garasi disatukan di bawah satu kunci penyimpanan `localStorage`: `ga
 }
 ```
 
-### B. Entitas Kendaraan (`Vehicle`)
-Mendukung 3 kategori: `CAR`, `MOTORCYCLE`, dan `BICYCLE`.
-
-```typescript
-interface Vehicle {
-  id: string;               // ID unik (contoh: "veh_1729384910_a8f2")
-  name: string;             // Nama panggilan (contoh: "Civic RS Turbo")
-  category: 'CAR' | 'MOTORCYCLE' | 'BICYCLE';
-  brand: string;            // Pabrikan (contoh: "Honda", "Yamaha", "Polygon")
-  model: string;            // Model unit
-  year: number;             // Tahun perakitan (contoh: 2022)
-  currentOdo: number;       // Odometer berjalan saat ini (km)
-  initialOdo: number;       // Odometer baseline saat pertama masuk garasi
-  createdAt: string;        // Timestamp ISO 8601
-  updatedAt: string;        // Timestamp ISO 8601
-  notes?: string;           // Catatan spesifikasi teknis
-
-  // Khusus Mobil & Motor (Motorized):
-  plateNumber?: string;      // Plat Nomor (contoh: "B 1234 GTR")
-  stnkExpiryDate?: string;   // Tanggal Pajak Tahunan STNK (YYYY-MM-DD)
-  plateExpiryDate?: string;  // Tanggal Ganti Plat 5 Tahunan (YYYY-MM-DD)
-  fuelType?: string;        // Jenis BBM (contoh: "RON 92 (Pertamax)")
-  tankCapacityLiters?: number; // Kapasitas tangki (Liter)
-
-  // Khusus Sepeda (Bicycle):
-  frameset?: string;        // Spesifikasi frame (contoh: "ACX Carbon Disc")
-  groupset?: string;        // Shifter & Drivetrain (contoh: "Shimano Ultegra 2x11s")
-  wheelset?: string;        // Profil velg (contoh: "Entity Carbon 45mm")
-  tireWidthMm?: number;     // Lebar nominal ban dalam mm (contoh: 28)
-  riderWeightKg?: number;   // Bobot pengendara (kg)
-  bikeWeightKg?: number;    // Bobot sepeda (kg)
-  isTubeless?: boolean;     // Apakah menggunakan setup ban tubeless
-}
-```
-
-### C. Entitas Suku Cadang (`ComponentHealth`)
+### B. Entitas Suku Cadang (`ComponentHealth`) — Model Dual-Threshold
 ```typescript
 interface ComponentHealth {
-  id: string;               // ID unik komponen
-  vehicleId: string;        // Foreign key mengacu ke Vehicle.id
-  name: string;             // Nama komponen (contoh: "Oli Mesin", "V-Belt")
-  category: string;         // Kategori (Pelumasan, Transmisi, Pengereman, dll.)
-  installedAtKm: number;    // Odometer kendaraan saat part dipasang / diservis
-  lifespanKm: number;       // Batas rekomendasi masa pakai (km)
+  id: string;               // ID unik komponen (contoh: "comp_civic_oil_01")
+  vehicleId: string;        // Mengacu ke Vehicle.id
+  name: string;             // Nama suku cadang (contoh: "Oli Mesin")
+  category: string;         // Kategori (Pelumasan, Pengereman, Transmisi, dll.)
+  installedAtKm: number;    // Odometer saat part dipasang / diservis
+  lifespanKm: number;       // Batas rekomendasi jarak tempuh (km)
   lastServicedDate: string; // Tanggal servis terakhir (YYYY-MM-DD)
-  notes?: string;           // Keterangan spesifikasi sparepart
-  key?: string;             // Kunci referensi preset standar
+  lifespanMonths?: number;  // Batas rekomendasi waktu pakai dalam bulan (misal: 6 atau 12)
+  notes?: string;           // Spesifikasi teknis part (tipe oli, kode busi, dll.)
+  key?: string;             // Kunci referensi preset standar pabrikan
 }
 ```
 
-### D. Entitas Logbook Servis (`ServiceLog`)
-```typescript
-interface ServiceLog {
-  id: string;               // ID unik catatan
-  vehicleId: string;        // Foreign key mengacu ke Vehicle.id
-  date: string;             // Tanggal pengerjaan (YYYY-MM-DD)
-  odometer: number;         // Angka odometer saat servis dilakukan (km)
-  category: 
-    | 'ROUTINE_SERVICE'     // Servis Berkala
-    | 'PART_REPLACEMENT'    // Penggantian Sparepart
-    | 'MODIFICATION'        // Modifikasi / Aksesoris
-    | 'TAX_DOCUMENT'        // Pajak STNK / Administrasi
-    | 'INSPECTION';         // Pengecekan / Diagnosa
-  title: string;            // Ringkasan judul servis
-  costRp: number;           // Total biaya dalam Rupiah
-  workshop: string;         // Nama bengkel pengerjaan atau "DIY / Sendiri"
-  notes: string;            // Rincian nota atau catatan mekanik
-  replacedComponentIds?: string[]; // Daftar ID part yang di-reset oleh servis ini
-}
-```
-
-### E. Entitas Log Pengisian BBM (`FuelLog`)
-```typescript
-interface FuelLog {
-  id: string;               // ID unik transaksi
-  vehicleId: string;        // Foreign key mengacu ke Vehicle.id
-  date: string;             // Tanggal pengisian (YYYY-MM-DD)
-  odometer: number;         // Odometer saat isi bensin (km)
-  liters: number;           // Jumlah liter yang diisi
-  totalCostRp: number;      // Total pengeluaran (Rp)
-  pricePerLiterRp: number;  // Harga per liter (Rp/L)
-  isFullTank: boolean;      // Apakah diisi penuh (mendukung hitungan Full-to-Full)
-  notes?: string;           // Nama SPBU atau catatan tambahan
-}
-```
+### C. Tabel Database Supabase Cloud (Opsional)
+Bagi pengguna yang login ke cloud, data dipetakan ke tabel relasional terproteksi RLS (*Row Level Security*):
+- `profiles`: Data profil pengguna (`id`, `full_name`, `email`, `created_at`).
+- `vehicles`: Data unit kendaraan per `user_id`.
+- `components`: Suku cadang kendaraan per `user_id`.
+- `service_logs`: Catatan riwayat servis per `user_id`.
+- `service_log_components`: Tabel penghubung (*junction table*) multi-komponen yang di-reset saat servis.
+- `fuel_logs`: Riwayat pengisian bensin per `user_id`.
 
 ---
 
 ## 6. Panduan Fitur & Modul Fungsional
 
-### A. Manajemen Armada (Multi-Vehicle Fleet)
-1. **Pilihan Unit Seketika:** Ganti kendaraan aktif secara instan melalui dropdown pada header atas.
-2. **Pendaftaran Kendaraan Baru:** Tombol `+ Tambah Unit` membuka modal dengan opsi kategori (*Mobil*, *Motor*, atau *Sepeda*). Form otomatis menyesuaikan input sesuai kategori terpilih.
-3. **Pembaruan Odometer Kilat (Quick Odo):** Tombol speedometer di header memungkinkan pengemudi memasukkan angka odometer terbaru dalam hitungan detik tanpa membuka menu edit.
-4. **Armada Default (Starter Fleet):**
-   - 🚗 **Mobil:** Honda Civic RS Turbo (28.450 km)
-   - 🏍️ **Motor:** Yamaha NMAX 155 Connected / ABS (14.800 km)
-   - 🚲 **Sepeda:** Polygon Strattos S8 Disc Carbon (2.150 km)
+### A. Manajemen Armada & Odometer Guard
+1. **Pilihan Unit Seketika:** Beralih antar kendaraan secara cepat melalui dropdown di navbar atas.
+2. **Pendaftaran Kendaraan Fleksibel:** Formulir adaptif untuk Mobil, Motor, atau Sepeda dengan parameter spesifik (plat nomor, masa berlaku pajak, bobot sepeda, setup tubeless).
+3. **Pembaruan Odometer Kilat (Quick Odo):** Memperbarui kilometer berjalan dalam hitungan detik.
+4. **Odometer Input Guard:** 
+   - Mencegah input angka kilometer yang lebih rendah dari odometer saat ini (*backward protection*).
+   - Memberikan konfirmasi jika terdapat lonjakan tidak wajar (>15.000 km dalam satu kali input) untuk mencegah salah ketik.
 
 ---
 
-### B. Telemetri & Pemantauan Kesehatan Part
-Tab **Kesehatan Part** (`ComponentHealthView.jsx`) menyajikan status seluruh komponen yang dapat aus (*wearable parts*).
-
-1. **Visual Wear Bar & Indikator Warna:**
-   - 🟢 **AMAN (Emerald):** Sisa umur $> 25\%$ dan sisa kilometer $> 0\text{ km}$.
-   - 🟡 **WAKTUNYA SERVIS (Amber):** Sisa umur $\le 25\%$ dan sisa kilometer $> 0\text{ km}$.
-   - 🔴 **OVERDUE (Rose):** Sisa kilometer $\le 0\text{ km}$ (melewati batas rekomendasi pabrikan).
-2. **One-Click "Servis Sekarang & Reset":**
-   - Membuka modal konfirmasi dengan estimasi kilometer servis saat ini.
-   - Mengisi biaya, tanggal, dan nama bengkel.
-   - Otomatis mereset angka `installedAtKm` suku cadang dan membuat entri baru di Logbook Servis.
-3. **Paket Servis Motor (Smart Bundles):**
-   - Fasilitas reset serentak untuk perawatan berkala:
-     - *Paket Ganti Oli Rutin:* Oli Mesin + Oli Gardan.
-     - *Paket Tune Up & Injeksi:* Oli Mesin + Busi + Filter Udara + Servis Throttle Body.
-     - *Paket Servis CVT:* Servis CVT + Roller + V-Belt + Oli Gardan.
-     - *Paket Pengereman:* Kampas Rem Depan + Belakang + Minyak Rem.
-4. **Mode Tampilan:** Dapat dialihkan antara tampilan **Kartu Grid** atau **Tabel Kompak**.
+### B. Mesin Keausan Part Ganda (Dual-Threshold Wear Engine)
+Sistem memantau kondisi fisik suku cadang menggunakan pendekatan **Jarak Tempuh (KM)** dan **Batas Waktu (Bulan)**:
+1. **Status AMAN (Hijau / Emerald):** Sisa kilometer $> 25\%$ DAN sisa waktu $> 25\%$.
+2. **Status WAKTUNYA SERVIS (Kuning / Amber):** Sisa kilometer $\le 25\%$ ATAU sisa waktu $\le 25\%$.
+3. **Status OVERDUE / KRITIS (Merah / Rose):** Sisa kilometer $\le 0\text{ km}$ ATAU batas waktu telah terlewati.
+4. **Aksi Servis Cepat & Paket Bundling:** 
+   - Tombol *"Servis Sekarang"* mereset odometer pemasangan part ke odometer saat ini serta memperbarui tanggal servis.
+   - Paket servis motor bawaan (Paket Ganti Oli, Paket Servis CVT, Paket Tune Up, Paket Pengereman) mereset suku cadang terkait secara serentak.
 
 ---
 
-### C. Logbook Servis & Analisis Biaya ($\text{Rp} / \text{km}$)
-Tab **Riwayat Servis** (`ServiceLogbookView.jsx`) mencatat seluruh riwayat pengerjaan perawatan dan kalkulasi biaya operasional.
-
-1. **Analisis Finansial Cerdas:**
-   - **Total Biaya Servis:** Akumulasi seluruh pengeluaran perawatan.
-   - **Rata-Rata per Servis:** Biaya rata-rata setiap kunjungan bengkel.
-   - **Biaya per Kilometer ($\text{Rp} / \text{km}$):** Menghitung nilai riil pengeluaran per kilometer yang telah ditempuh kendaraan.
-2. **Pencatatan Multi-Part:** Saat menambahkan servis baru, pengguna dapat mencentang beberapa suku cadang sekaligus agar status masa pakainya ter-reset bersamaan.
-3. **Pencarian & Penyaringan:**
-   - Pencarian berdasarkan judul, catatan, atau nama bengkel.
-   - Filter kategori: Servis Rutin, Ganti Part, Modifikasi, Pajak STNK, Inspeksi.
-   - Sortir berdasarkan: Tanggal terbaru, Odometer tertinggi, Biaya terbesar.
+### C. Logbook Servis & Analisis Biaya Riil ($\text{Rp} / \text{km}$)
+1. **Analisis Finansial Terintegrasi:**
+   - Total biaya perawatan kumulatif.
+   - Rata-rata biaya setiap servis berkala.
+   - **Biaya per Kilometer ($\text{Rp} / \text{km}$):** Rasio biaya nyata dari kilometer yang telah ditempuh unit sejak masuk garasi.
+2. **Multi-Component Linking:** Setiap catatan servis dapat ditautkan dengan satu atau banyak suku cadang sekaligus.
+3. **Pencarian, Filter, & Sortir:** Pencarian judul/catatan/bengkel, filter kategori pengerjaan, dan sortir tanggal/odo/biaya.
 
 ---
 
 ### D. Kalkulator Teknis & Utilitas Adaptif
-Tab **Kalkulator Teknis** (`ToolsView.jsx`) otomatis menampilkan utilitas yang relevan dengan jenis kendaraan aktif:
+Antarmuka kalkulator otomatis menyesuaikan diri dengan kendaraan aktif:
 
 #### 1. Utilitas Mobil & Motor
-- **Kalkulator BBM Full-to-Full:**
-  - Menghitung efisiensi bahan bakar rata-rata ($\text{km/L}$) berdasarkan delta kilometer antar pengisian tangki penuh.
-  - Menyimpan riwayat log BBM lengkap dengan rincian biaya dan volume liter.
-- **Estimator Biaya Perjalanan (Trip Cost):**
-  - Masukkan estimasi jarak (km), konsumsi BBM rata-rata (km/L), dan harga bensin per liter (Rp).
-  - Menghitung kebutuhan liter bensin dan total estimasi rupiah yang dibutuhkan.
-- **Pengingat Pajak STNK & Plat Nomor:**
-  - Countdown sisa hari hingga tanggal jatuh tempo Pajak Tahunan STNK (1 tahun) dan Ganti Plat (5 tahun).
-  - Status warna: Hijau (Aman), Kuning ($\le 45$ hari), Merah ($\le 14$ hari atau terlewat).
-  - Tombol aksi cepat untuk memperpanjang tanggal dan mencatat biaya pajak ke logbook.
+- **Kalkulator BBM Full-to-Full:** Menghitung efisiensi konsumsi bahan bakar riil ($\text{km/L}$) antar pengisian penuh dan menyimpan log BBM.
+- **Estimator Biaya Perjalanan (Trip Cost):** Menghitung kebutuhan liter bensin dan perkiraan total rupiah berdasarkan jarak tujuan.
+- **Pengingat Pajak STNK & Plat Nomor:** Hitung mundur hari jatuh tempo Pajak Tahunan STNK (1 tahun) dan Ganti Plat (5 tahun) dengan penanda warna dan tombol perpanjangan cepat.
 
 #### 2. Utilitas Sepeda Balap / Gravel
-- **Frank Berto Smart Tire Pressure Calculator:**
-  - Menghitung tekanan ban ideal Depan dan Belakang (dalam satuan `PSI` dan `Bar`).
-  - Parameter: Bobot Rider (kg), Bobot Sepeda (kg), Lebar Ban (25c – 45c), Tipe Jalan (Aspal Mulus, Aspal Kasar/Basah, Gravel), dan Tipe Casing (Ban Dalam vs Tubeless).
-- **Gear Ratio & Cadence Speed Calculator:**
-  - Menghitung rasio gir ($T_{\text{depan}} / T_{\text{belakang}}$) dan jarak tempuh per kayuhan (*development meters*).
-  - Menghitung estimasi kecepatan ($\text{km/jam}$) pada target cadence (RPM).
-  - Menyajikan matriks kecepatan lengkap untuk seluruh kombinasi 11-speed cassette.
+- **Frank Berto Smart Tire Pressure Calculator:** Menghitung tekanan ban ideal Depan dan Belakang (PSI dan Bar) berdasarkan distribusi bobot ($42\%$ depan / $58\%$ belakang), lebar tapak ban ($25\text{c} - 45\text{c}$), tipe lintasan, dan setup ban dalam vs tubeless.
+- **Gear Ratio & Cadence Speed Calculator:** Menghitung rasio transmisi gir, *development meters*, estimasi kecepatan tempuh ($\text{km/jam}$) pada target RPM, serta matriks kecepatan lengkap 11-speed cassette.
 
 ---
 
-### E. Cadangan Data & Pemulihan (Local-First Backup)
-1. **Ekspor Cadangan:** Menghasilkan berkas cadangan JSON bersih berstempel waktu (`velo-moto-garage-backup-[tanggal].json`).
-2. **Impor Cadangan:** Memungkinkan pengguna mengunggah file `.json` atau menempelkan teks JSON secara langsung. Sistem memvalidasi struktur data sebelum mengganti state aktif.
-3. **Reset ke Data Percontohan:** Mengembalikan armada percontohan bawaan jika pengguna ingin memulai dari awal.
+### E. Cadangan Data: Local-First JSON & Supabase Cloud Sync
+1. **Ekspor Cadangan Mandiri (.JSON):** Menghasilkan berkas cadangan JSON bersih berstempel waktu. Pada perangkat Android, fitur ini otomatis memunculkan sheet berbagi native (*WhatsApp, Drive, Email*).
+2. **Impor Cadangan JSON:** Unggah berkas `.json` atau tempel teks JSON secara langsung.
+3. **Cloud Backup & Restore (Supabase):**
+   - Pengguna dapat membuat akun atau login melalui Google / Email.
+   - Tombol **"Cadangkan ke Cloud"** menyimpan seluruh data lokal ke database Supabase.
+   - Tombol **"Pulihkan dari Cloud"** mengambil kembali seluruh data ke perangkat baru.
 
 ---
 
-## 7. Formulasi Matematika & Algoritma
+### F. Integrasi Mobile Native Android (Capacitor)
+- **Aplikasi Terpasang (APK Standalone):** Berjalan mulus di perangkat Android tanpa perlu membuka browser.
+- **Hardware Back Button Handler:** Menekan tombol kembali fisik/gesture Android akan:
+  1. Menutup modal yang sedang aktif terlebih dahulu.
+  2. Jika tidak ada modal, mengembalikan navigasi ke tab **Dashboard**.
+  3. Jika sudah di Dashboard, keluar dari aplikasi secara aman (*CapApp.exitApp*).
+- **Dark Status Bar Styling:** Warna status bar otomatis menyatu dengan latar belakang aplikasi (`#090D16`).
+- **Safe Area Inset Handling:** Tata letak otomatis menyesuaikan notch kamera, punch-hole, dan gestur bar bawah Android (`env(safe-area-inset-*)`).
 
-### 1. Perhitungan Sisa Masa Pakai Suku Cadang
-Diberikan odometer saat ini $O_{\text{current}}$, odometer pemasangan $O_{\text{installed}}$, dan target masa pakai $L$:
+---
 
-$$\text{Km Terpakai} = \max(0, O_{\text{current}} - O_{\text{installed}})$$
+### G. Interaktivitas & Animasi UI
+- **Bottom Navigation Bar (Mobile):** Navigasi mengambang di bagian bawah layar HP dengan tombol cepat (+) FAB untuk mencatat servis.
+- **Framer Motion Transitions:** Pergantian antar tab dan pembukaan modal terasa halus dengan animasi fading & slide.
+- **Canvas Confetti Celebration:** Muncul letupan konfeti visual saat pengguna menyelesaikan servis berkala atau mereset suku cadang.
 
-$$\text{Sisa Km} = L - \text{Km Terpakai}$$
+---
 
-$$\text{Sisa Persentase} = \max\left(0, \min\left(100, \left( \frac{\text{Sisa Km}}{L} \right) \times 100 \right)\right)$$
+## 7. Pengujian Otomatis (Automated Unit Testing)
+
+Sistem dilengkapi suite pengujian otomatis berbasis runner bawaan Node.js (`tests/test-logic.mjs`) untuk menjamin akurasi formula matematika dan validasi data.
+
+Jalankan pengujian dengan perintah:
+```bash
+npm test
+```
+
+### Cakupan Pengujian (10/10 Passed):
+1. **Dual-Threshold Wear Logic (KM):** Memastikan batas kilometer memicu status *critical / overdue*.
+2. **Dual-Threshold Wear Logic (Waktu/Bulan):** Memastikan batas waktu (bulan) memicu status *critical* meski kilometer masih rendah.
+3. **Status Komponen Sehat:** Memverifikasi status *healthy* jika kedua batas (km & waktu) masih dalam ambang aman.
+4. **Odometer Guard (Nilai Mundur):** Mendeteksi dan menolak angka odometer yang lebih kecil dari odometer saat ini.
+5. **Odometer Guard (Lonjakan Ekstrem):** Memberikan peringatan jika input kilometer melonjak $> 15.000\text{ km}$.
+6. **Odometer Guard (Pertambahan Normal):** Mengizinkan input kilometer yang wajar tanpa peringatan palsu.
+7. **Akurasi Perhitungan Cost per KM:** Memvalidasi pembagian biaya dengan delta jarak.
+8. **Kalkulator Teknis Sepeda & BBM:** Menguji formula tekanan ban Frank Berto dan konsumsi km/L.
+9. **Integritas Data Preset:** Memastikan seluruh preset standar memiliki nilai `lifespanKm` dan `lifespanMonths` yang valid.
+10. **Sanitisasi Format Rupiah:** Menguji parsing input mata uang Rupiah dari format teks/ribuan ke angka murni.
+
+---
+
+## 8. Formulasi Matematika & Algoritma
+
+### 1. Keausan Suku Cadang (Dual-Threshold: KM & Waktu)
+Diberikan odometer saat ini $O_{\text{current}}$, odometer pemasangan $O_{\text{installed}}$, target kilometer $L_{\text{km}}$, tanggal servis terakhir $T_{\text{last}}$, dan target bulan $M$:
+
+$$\text{Km Elapsed} = \max(0, O_{\text{current}} - O_{\text{installed}})$$
+$$\text{Remaining Km \%} = \max\left(0, \min\left(100, \left( 1 - \frac{\text{Km Elapsed}}{L_{\text{km}}} \right) \times 100 \right)\right)$$
+
+$$\text{Days Elapsed} = \max\left(0, \frac{\text{Today} - T_{\text{last}}}{86.400.000}\right)$$
+$$\text{Remaining Time \%} = \max\left(0, \min\left(100, \left( 1 - \frac{\text{Days Elapsed}}{M \times 30.44} \right) \times 100 \right)\right)$$
+
+$$\text{Status Akhir} = \min(\text{Remaining Km \%}, \text{Remaining Time \%})$$
 
 ### 2. Analisis Biaya per Kilometer ($\text{Rp} / \text{km}$)
-Diberikan total pengeluaran perawatan $C_{\text{total}}$, odometer saat ini $O_{\text{current}}$, dan odometer awal unit $O_{\text{initial}}$:
-
 $$\Delta D = \max(1, O_{\text{current}} - O_{\text{initial}})$$
-
 $$\text{Biaya per Km} = \text{round}\left(\frac{C_{\text{total}}}{\Delta D}\right)$$
 
 ### 3. Konsumsi BBM Metode Full-to-Full
 $$\text{Efisiensi (km/L)} = \frac{O_{\text{terkini}} - O_{\text{sebelumnya}}}{\text{Liter Diisi}}$$
 
 ### 4. Tekanan Ban Sepeda (Frank Berto Approximation)
-Distribusi bobot sepeda normal dimodelkan $42\%$ roda depan dan $58\%$ roda belakang:
-
-$$\text{Bobot Total (kg)} = W_{\text{rider}} + W_{\text{bike}}$$
-
-$$\text{Rear PSI (Base)} = \left(\frac{\text{Bobot Total}}{W_{\text{tire}} \times 0.038}\right) \times 0.58 \times 0.95$$
-
+$$\text{Rear PSI (Base)} = \left(\frac{W_{\text{rider}} + W_{\text{bike}}}{W_{\text{tire}} \times 0.038}\right) \times 0.58 \times 0.95 \times F_{\text{surface}} \times F_{\text{tubeless}}$$
 $$\text{Front PSI} = \text{Rear PSI} \times \left(\frac{0.42}{0.58}\right)$$
 
-*Koreksi Permukaan & Setup:*
-- Aspal Kering: $\times 1.00$
-- Aspal Basah / Kasar: $\times 0.92$
-- Gravel: $\times 0.82$
-- Ban Tubeless: $\times 0.91$ (pengurangan $9\%$ karena resistensi pinch-flat yang lebih rendah)
-
-### 5. Gear Ratio & Kecepatan Sepeda
-Diberikan jumlah gigi chainring depan $T_f$, jumlah gigi cog belakang $T_r$, lingkar ban $C_m$ (meter), dan cadence $R$ (RPM):
-
-$$\text{Gear Ratio} = \frac{T_f}{T_r}$$
-
-$$\text{Development (m)} = \text{Gear Ratio} \times C_m$$
-
-$$\text{Kecepatan (km/h)} = \frac{\text{Development (m)} \times R \times 60}{1000}$$
-
 ---
 
-## 8. Preset Suku Cadang Standar Pabrikan
+## 9. Preset Suku Cadang Standar Pabrikan
 
 ### Mobil (CAR)
-| Komponen | Interval Target | Kategori | Keterangan |
-|---|---|---|---|
-| Oli Mesin & Filter Oli | 10.000 km | Pelumasan | Oli full-sintetik & ganti filter oli |
-| Oli Transmisi (ATF/CVT) | 40.000 km | Transmisi | Kuras oli transmisi matic / manual |
-| Kampas Rem (Brake Pads) | 30.000 km | Pengereman | Inspeksi ketebalan kampas depan/belakang |
-| Filter Udara Mesin | 20.000 km | Intake | Penggantian filter udara intake ruang bakar |
-| Rotasi Ban & Spooring | 10.000 km | Roda & Suspensi | Rotasi ban menyilang agar tapak aus merata |
+| Komponen | Interval Target | Batas Waktu | Kategori | Keterangan |
+|---|---|---|---|---|
+| Oli Mesin & Filter Oli | 10.000 km | 6 Bulan | Pelumasan | Oli full-sintetik & filter oli |
+| Oli Transmisi (ATF/CVT) | 40.000 km | 24 Bulan | Transmisi | Kuras oli transmisi otomatis/manual |
+| Kampas Rem (Brake Pads) | 30.000 km | 24 Bulan | Pengereman | Inspeksi ketebalan kampas rem |
+| Filter Udara Mesin | 20.000 km | 12 Bulan | Intake | Ganti filter udara ruang bakar |
+| Rotasi Ban & Spooring | 10.000 km | 6 Bulan | Roda & Suspensi | Rotasi ban menyilang |
 
-### Motor (MOTORCYCLE - 14 Komponen Granular Standar + Ban)
-| Komponen | Interval Target | Jenis Motor | Keterangan |
-|---|---|---|---|
-| Oli Mesin | 3.000 km | Semua Motor | Oli mesin 4-tak / matic |
-| Oli Gardan / Gear Oil | 9.000 km | Khusus Matic | Pelumas rasio roda belakang |
-| Filter Oli Mesin | 9.000 km | Semua Motor | Saringan oli karter / elemen filter |
-| Servis Throttle Body & Injektor | 8.000 km | Semua Motor | Bersihkan TB, injector cleaner, kalibrasi TPS |
-| Busi (Spark Plug) | 9.000 km | Semua Motor | Busi pengapian standar / iridium |
-| Filter Udara (Air Filter) | 12.000 km | Semua Motor | Saringan udara intake viscous |
-| Kampas Rem Depan | 12.000 km | Semua Motor | Kampas rem cakram depan |
-| Kampas Rem Belakang | 12.000 km | Semua Motor | Kampas rem cakram / tromol belakang |
-| Servis CVT (Clean & Grease) | 8.000 km | Khusus Matic | Pembersihan debu mangkok kopling & gemuk CVT |
-| Roller CVT | 16.000 km | Khusus Matic | Roller pemberat pulley primer |
-| V-Belt Drive | 20.000 km | Khusus Matic | Sabuk penggerak CVT |
-| Rantai & Gir Set | 20.000 km | Khusus Bebek/Sport | Sprocket depan-belakang & rantai roda |
-| Air Radiator / Coolant | 14.000 km | Liquid Cooled | Kuras & isi air radiator baru |
-| Minyak Rem (Brake Fluid) | 20.000 km | Semua Motor | Kuras minyak rem DOT 3 / DOT 4 |
-| Ban Depan Tubeless | 15.000 km | Semua Motor | Pemeriksaan TWI & alur ban depan |
-| Ban Belakang Tubeless | 12.000 km | Semua Motor | Pemeriksaan TWI & alur ban belakang |
+### Motor (MOTORCYCLE - 14 Komponen Granular + Ban)
+| Komponen | Interval Target | Batas Waktu | Jenis Motor | Keterangan |
+|---|---|---|---|---|
+| Oli Mesin | 3.000 km | 2 Bulan | Semua Motor | Oli mesin 4-tak / matic |
+| Oli Gardan / Gear Oil | 9.000 km | 6 Bulan | Khusus Matic | Pelumas gardan belakang |
+| Filter Oli Mesin | 9.000 km | 6 Bulan | Semua Motor | Saringan oli karter |
+| Servis Throttle Body | 8.000 km | 6 Bulan | Semua Motor | Pembersihan TB & reset TPS |
+| Busi (Spark Plug) | 9.000 km | 8 Bulan | Semua Motor | Busi pengapian standar/iridium |
+| Filter Udara | 12.000 km | 12 Bulan | Semua Motor | Filter udara intake viscous |
+| Kampas Rem Depan | 12.000 km | 12 Bulan | Semua Motor | Kampas rem cakram depan |
+| Kampas Rem Belakang | 12.000 km | 12 Bulan | Semua Motor | Kampas rem tromol/cakram belakang |
+| Servis CVT (Clean & Grease) | 8.000 km | 6 Bulan | Khusus Matic | Bersihkan mangkok & beri gemuk CVT |
+| Roller CVT | 16.000 km | 12 Bulan | Khusus Matic | Roller pemberat pulley |
+| V-Belt Drive | 20.000 km | 18 Bulan | Khusus Matic | Sabuk penggerak CVT |
+| Rantai & Gir Set | 20.000 km | 18 Bulan | Manual / Bebek | Rantai roda & gir set |
+| Air Radiator / Coolant | 14.000 km | 12 Bulan | Liquid Cooled | Kuras coolant radiator |
+| Minyak Rem (Brake Fluid) | 20.000 km | 24 Bulan | Semua Motor | Kuras minyak rem DOT 3/4 |
+| Ban Depan Tubeless | 15.000 km | 18 Bulan | Semua Motor | Cek keausan alur ban depan |
+| Ban Belakang Tubeless | 12.000 km | 14 Bulan | Semua Motor | Cek keausan alur ban belakang |
 
 ### Sepeda (BICYCLE)
-| Komponen | Interval Target | Keterangan |
-|---|---|---|
-| Chain Lube / Wax | 250 km | Degrease & re-lube pelumas rantai atau hot wax |
-| Rantai Sepeda | 3.000 km | Cek keausan rantai ($0.5\%$ wear indicator) |
-| Ban Luar (Tires) | 4.000 km | Penggantian ban luar depan / belakang |
-| Bar Tape / Grip | 5.000 km | Kebersihan dan kenyamanan handlebar tape |
-| Brake Pads (Disc / Rim) | 3.000 km | Ketebalan kampas rem cakram hidrolik / velg |
+| Komponen | Interval Target | Batas Waktu | Keterangan |
+|---|---|---|---|
+| Chain Lube / Wax | 250 km | 1 Bulan | Pelumasan rantai atau hot wax |
+| Rantai Sepeda | 3.000 km | 12 Bulan | Cek keausan rantai (0.5% wear indicator) |
+| Ban Luar (Tires) | 4.000 km | 18 Bulan | Penggantian ban luar tapak depan/belakang |
+| Bar Tape / Grip | 5.000 km | 12 Bulan | Kenyamanan dan higienitas pegangan stang |
+| Brake Pads (Disc / Rim) | 3.000 km | 12 Bulan | Ketebalan kampas rem cakram / velg |
 
 ---
 
-## 9. Panduan Instalasi, Menjalankan, & Build
+## 10. Panduan Instalasi, Menjalankan, & Build (Web & Android APK)
 
 ### Persyaratan Lingkungan
 - **Node.js:** Versi 18.x atau lebih baru
 - **NPM:** Versi 9.x atau lebih baru
+- **Android Studio (Opsional):** Diperlukan jika ingin memodifikasi atau meng-compile ulang kode native Android.
 
 ### 1. Pemasangan Dependensi
-Buka terminal pada direktori proyek (`d:\garage-logbook`) lalu jalankan:
 ```bash
 npm install
 ```
 
-### 2. Menjalankan Mode Development
-Untuk memulai server pengembangan dengan fitur Hot Reload:
+### 2. Menjalankan Mode Development Web
 ```bash
 npm run dev
 ```
-Buka peramban pada alamat lokal: `http://localhost:5173`
+Akses di browser pada: `http://localhost:5173`
 
-### 3. Membangun Bundel Produksi (Production Build)
-Untuk menghasilkan berkas statis siap rilis:
+### 3. Menjalankan Automated Unit Tests
+```bash
+npm test
+```
+
+### 4. Membangun Bundel Produksi Web
 ```bash
 npm run build
 ```
-Hasil berkas produksi akan tersimpan di dalam folder `dist/` dan siap disematkan ke platform hosting mana pun (Vercel, Cloudflare Pages, Netlify, GitHub Pages, atau web server lokal Nginx/Apache).
+Hasil berkas statis akan berada pada direktori `dist/`.
 
-### 4. Pratinjau Hasil Build Produksi
-Untuk menguji hasil kompilasi produksi secara lokal:
+### 5. Sinkronisasi & Pembuatan APK Android (Capacitor)
+Jika Anda melakukan perubahan kode web dan ingin memperbarui proyek Android:
 ```bash
-npm run preview
+# 1. Build berkas web terbaru
+npm run build
+
+# 2. Sinkronkan ke folder android/
+npx cap sync android
+
+# 3. Buka di Android Studio untuk build APK
+npx cap open android
 ```
+*Catatan: Berkas installer APK siap pasang sudah tersedia di root proyek: `garage-logbook.apk`.*
 
 ---
 
-## 10. FAQ & Pemecahan Masalah
+## 11. FAQ & Pemecahan Masalah
 
-#### Q: Apakah data saya hilang jika browser ditutup atau komputer dimatikan?
-**Tidak.** Seluruh data otomatis tersimpan di `localStorage` peramban Anda. Namun, jika Anda membersihkan riwayat penjelajahan (*Clear Browsing Data / Storage*), data lokal dapat terhapus. Sangat disarankan untuk rutin mengekspor cadangan melalui tombol **Ekspor Cadangan (.JSON)** di menu sidebar.
+#### Q: Apakah saya wajib membuat akun Supabase untuk menggunakan aplikasi ini?
+**Tidak.** Aplikasi bersifat *100% Offline-First*. Anda bisa langsung menambahkan kendaraan, mencatat servis, dan menggunakan seluruh kalkulator tanpa login sama sekali. Akun Supabase hanya dibutuhkan jika Anda ingin mencadangkan data ke cloud agar dapat disinkronkan ke perangkat lain.
 
-#### Q: Bagaimana cara memindahkan data garasi ke laptop atau perangkat lain?
-1. Pada laptop lama: Buka Sidebar > Klik **Ekspor Cadangan** > Simpan berkas `.json`.
-2. Pada laptop baru: Buka aplikasi > Buka Sidebar > Klik **Impor Cadangan** > Pilih berkas `.json` tersebut. Seluruh armada dan riwayat servis akan langsung pulih.
+#### Q: Bagaimana cara menginstal aplikasi ini di HP Android saya?
+Cukup salin berkas `garage-logbook.apk` yang ada di root repositori ini ke smartphone Android Anda (bisa melalui WhatsApp, Google Drive, atau kabel data), lalu buka berkas tersebut di HP Anda untuk melakukan instalasi (*sideload install*).
 
-#### Q: Bagaimana cara menambah suku cadang kustom yang belum ada di daftar preset?
-Buka tab **Kesehatan Part** > Klik tombol **+ Tambah Part** di pojok kanan atas > Masukkan nama part, kategori, odometer pemasangan, dan target kilometer masa pakai.
+#### Q: Apa yang terjadi jika HP saya tidak terhubung ke internet (Offline)?
+Aplikasi tetap berjalan normal tanpa kendala. Seluruh data tersimpan di penyimpanan internal HP Anda (`localStorage`). Saat internet kembali aktif, Anda dapat menekan tombol *Cadangkan ke Cloud* kapan saja Anda inginkan.
 
-#### Q: Apakah aplikasi dapat digunakan saat tidak ada koneksi internet (Offline)?
-**Ya.** Karena aplikasi bersifat 100% *Local-First* dan seluruh pustaka serta aset font telah dibundel, aplikasi dapat dijalankan secara luring (*offline*) sepenuhnya.
+#### Q: Mengapa status oli saya berubah menjadi kuning/merah padahal kilometer motor saya masih sedikit?
+Sistem menggunakan **Dual-Threshold Wear Engine**. Jika kilometer motor Anda masih rendah namun tanggal servis terakhir sudah melewati batas rekomendasi bulan (misalnya sudah lewat 6 bulan sejak ganti oli terakhir), sistem secara cerdas akan mengingatkan Anda bahwa pelumas telah mengalami degradasi akibat waktu simpan.
 
 ---
 
-*Velo & Moto Garage Logbook — Engineered for precision vehicle tracking & telemetry.*
+*Velo & Moto Garage Logbook — Engineered for precision vehicle tracking, mobile readiness & telemetry.*

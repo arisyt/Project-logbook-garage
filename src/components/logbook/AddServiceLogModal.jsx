@@ -522,7 +522,7 @@ export default function AddServiceLogModal({
             </div>
 
             {/* Sticky Action Buttons */}
-            <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-md pt-3 pb-4 md:pb-3 px-5 border-t border-slate-800/80 flex items-center justify-end gap-2.5 shrink-0">
+            <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-md pt-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] md:pb-3 px-5 border-t border-slate-800/80 flex items-center justify-end gap-2.5 shrink-0">
               <button
                 type="button"
                 onClick={onClose}

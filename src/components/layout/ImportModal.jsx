@@ -48,19 +48,22 @@ export default function ImportModal({ isOpen, onClose, onImportData }) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/80 backdrop-blur-md">
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            initial={{ opacity: 0, y: 40, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 40, scale: 0.96 }}
             transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-            className="w-full max-w-lg rounded-2xl bg-slate-900/90 backdrop-blur-2xl border border-slate-700/80 shadow-2xl overflow-hidden relative"
+            className="w-full max-w-lg rounded-t-3xl md:rounded-2xl max-h-[92vh] md:max-h-[85vh] flex flex-col bg-slate-900/95 md:bg-slate-900/90 backdrop-blur-2xl border-t md:border border-slate-700/80 shadow-2xl overflow-hidden relative"
           >
+            {/* Grab handle for mobile bottom sheet */}
+            <div className="w-12 h-1 bg-slate-700 rounded-full mx-auto mt-2.5 mb-1 md:hidden shrink-0" />
+
             {/* Subtle Glow */}
             <div className="absolute -top-16 -right-16 w-36 h-36 bg-cyan-500/10 rounded-full blur-2xl pointer-events-none" />
 
             {/* Header */}
-            <div className="p-4 border-b border-slate-800/80 flex items-center justify-between relative z-10">
+            <div className="p-4 border-b border-slate-800/80 flex items-center justify-between relative z-10 shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
                   <Upload className="w-4 h-4" />
@@ -81,55 +84,57 @@ export default function ImportModal({ isOpen, onClose, onImportData }) {
             </div>
 
             {/* Form Body */}
-            <form onSubmit={handleSubmit} className="p-5 space-y-4 relative z-10">
-              {/* File input dropzone */}
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1.5">
-                  Pilih File Backup (.JSON)
-                </label>
-                <label className="flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed border-slate-700 hover:border-cyan-500/60 bg-slate-950/60 cursor-pointer transition">
-                  <Upload className="w-8 h-8 text-cyan-400 mb-2" />
-                  <span className="text-xs font-semibold text-slate-200">
-                    {fileName ? fileName : 'Klik untuk memilih file JSON'}
-                  </span>
-                  <span className="text-[10px] font-mono text-slate-500 mt-1">
-                    velo-moto-garage-backup-*.json
-                  </span>
-                  <input
-                    type="file"
-                    accept=".json,application/json"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-
-              {/* Or Paste Raw JSON */}
-              <div>
-                <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
-                  Atau Tempel Raw JSON
-                </label>
-                <textarea
-                  rows="4"
-                  value={jsonText}
-                  onChange={(e) => {
-                    setJsonText(e.target.value);
-                    setError('');
-                  }}
-                  placeholder='{"version": "1.0.0", "vehicles": [...], ...}'
-                  className="w-full px-3 py-2 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-300 font-mono text-xs focus:outline-none focus:border-cyan-500"
-                />
-              </div>
-
-              {error && (
-                <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-mono flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
-                  <span>{error}</span>
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden relative z-10">
+              <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                {/* File input dropzone */}
+                <div>
+                  <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1.5">
+                    Pilih File Backup (.JSON)
+                  </label>
+                  <label className="flex flex-col items-center justify-center p-6 rounded-xl border-2 border-dashed border-slate-700 hover:border-cyan-500/60 bg-slate-950/60 cursor-pointer transition">
+                    <Upload className="w-8 h-8 text-cyan-400 mb-2" />
+                    <span className="text-xs font-semibold text-slate-200">
+                      {fileName ? fileName : 'Klik untuk memilih file JSON'}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-500 mt-1">
+                      velo-moto-garage-backup-*.json
+                    </span>
+                    <input
+                      type="file"
+                      accept=".json,application/json"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
                 </div>
-              )}
+
+                {/* Or Paste Raw JSON */}
+                <div>
+                  <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
+                    Atau Tempel Raw JSON
+                  </label>
+                  <textarea
+                    rows="4"
+                    value={jsonText}
+                    onChange={(e) => {
+                      setJsonText(e.target.value);
+                      setError('');
+                    }}
+                    placeholder='{"version": "1.0.0", "vehicles": [...], ...}'
+                    className="w-full px-3 py-2 rounded-xl bg-slate-950/80 border border-slate-700 text-slate-300 font-mono text-xs focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+
+                {error && (
+                  <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-mono flex items-start gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                    <span>{error}</span>
+                  </div>
+                )}
+              </div>
 
               {/* Footer Actions */}
-              <div className="pt-2 flex items-center justify-end gap-2.5">
+              <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-md pt-3 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] md:pb-3 px-5 border-t border-slate-800/80 flex items-center justify-end gap-2.5 shrink-0">
                 <button
                   type="button"
                   onClick={onClose}

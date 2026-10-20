@@ -10,6 +10,11 @@
     "test": "node --test tests/test-logic.mjs"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/status-bar": "^8.0.4",
     "@supabase/supabase-js": "^2.118.0",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",

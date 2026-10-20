@@ -111,8 +111,8 @@ export default function Dashboard({
       className="space-y-6"
     >
       {/* 1. Vehicle Hero Telemetry Banner */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900/80 via-slate-900/60 to-slate-950/80 backdrop-blur-xl border border-slate-800/80 relative overflow-hidden shadow-xl">
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+      <div className="p-4 sm:p-6 rounded-2xl bg-gradient-to-r from-slate-900/80 via-slate-900/60 to-slate-950/80 backdrop-blur-xl border border-slate-800/80 relative overflow-hidden shadow-xl">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2.5">
               <span className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold border border-slate-700 ${meta.bg} ${meta.color}`}>
@@ -138,7 +138,7 @@ export default function Dashboard({
           </div>
 
           {/* Quick Odometer Telemetry Block */}
-          <div className="flex items-center gap-4 bg-slate-950/70 p-4 rounded-xl border border-slate-800 self-start md:self-auto">
+          <div className="flex items-center gap-4 bg-slate-950/70 p-4 rounded-xl border border-slate-800 w-full md:w-auto self-start md:self-auto">
             <div className="p-3 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
               <Gauge className="w-6 h-6" />
             </div>

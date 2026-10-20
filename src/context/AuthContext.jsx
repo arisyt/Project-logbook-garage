@@ -1,20 +1,31 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../utils/supabaseClient';
 
+export const LOCAL_USER = {
+  id: 'local_garage_user',
+  email: 'offline@lokal.garasi',
+  user_metadata: { full_name: 'Pemilik Garasi' },
+  isOffline: true,
+};
+
 const AuthContext = createContext(null);
 
 /**
- * AuthProvider — wraps the whole app and exposes auth state + helpers via useAuth().
+ * AuthProvider — wraps the app with an offline-first session state.
+ * By default in mobile/offline mode, user is LOCAL_USER so the app never blocks
+ * or requires any connection to a remote backend server.
+ * Supabase auth is preserved optionally for Cloud Backup & Restore.
  */
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(LOCAL_USER);
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isCloudConnected, setIsCloudConnected] = useState(false);
 
   // Fetch or refresh user profile from public.profiles
   const fetchProfile = async (userId) => {
-    if (!userId) {
+    if (!userId || userId === LOCAL_USER.id) {
       setProfile(null);
       return;
     }
@@ -24,44 +35,62 @@ export function AuthProvider({ children }) {
         .select('*')
         .eq('id', userId)
         .single();
-      if (error) {
-        console.warn('[AuthContext] fetchProfile error:', error.message);
-        setProfile(null);
-      } else {
+      if (!error && data) {
         setProfile(data);
       }
-    } catch (err) {
-      console.warn('[AuthContext] fetchProfile unexpected error:', err);
+    } catch {
       setProfile(null);
     }
   };
 
   useEffect(() => {
-    // Retrieve initial session
-    supabase.auth
-      .getSession()
-      .then(({ data: { session: s } }) => {
-        setSession(s);
-        setUser(s?.user ?? null);
-        fetchProfile(s?.user?.id ?? null).finally(() => setIsLoading(false));
+    let isMounted = true;
+    const sessionPromise = supabase.auth.getSession();
+    const timeoutPromise = new Promise((resolve) => setTimeout(() => resolve({ timeout: true }), 800));
+
+    Promise.race([sessionPromise, timeoutPromise])
+      .then((result) => {
+        if (!isMounted || result?.timeout) return;
+        const s = result?.data?.session;
+        if (s?.user) {
+          setSession(s);
+          setUser(s.user);
+          setIsCloudConnected(true);
+          fetchProfile(s.user.id);
+        } else {
+          setUser(LOCAL_USER);
+          setIsCloudConnected(false);
+        }
       })
-      .catch((err) => {
-        console.warn('[AuthContext] getSession error:', err);
-        setIsLoading(false);
+      .catch(() => {
+        if (isMounted) {
+          setUser(LOCAL_USER);
+          setIsCloudConnected(false);
+        }
       });
 
     // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (_event, s) => {
-        setSession(s);
-        setUser(s?.user ?? null);
-        await fetchProfile(s?.user?.id ?? null);
-        setIsLoading(false);
+        if (!isMounted) return;
+        if (s?.user) {
+          setSession(s);
+          setUser(s.user);
+          setIsCloudConnected(true);
+          await fetchProfile(s.user.id);
+        } else {
+          setSession(null);
+          setUser(LOCAL_USER);
+          setProfile(null);
+          setIsCloudConnected(false);
+        }
       }
     );
 
-    return () => subscription.unsubscribe();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      isMounted = false;
+      subscription?.unsubscribe();
+    };
   }, []);
 
   // --- Auth helpers ---
@@ -75,12 +104,18 @@ export function AuthProvider({ children }) {
   };
 
   const signInWithEmail = async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
+    if (data?.user) {
+      setUser(data.user);
+      setSession(data.session);
+      setIsCloudConnected(true);
+      fetchProfile(data.user.id);
+    }
   };
 
   const signUp = async (email, password, fullName) => {
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -88,14 +123,24 @@ export function AuthProvider({ children }) {
       },
     });
     if (error) throw error;
+    if (data?.user) {
+      setUser(data.user);
+      setSession(data.session);
+      setIsCloudConnected(true);
+      fetchProfile(data.user.id);
+    }
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-    setUser(null);
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      // Ignore network errors on signout
+    }
+    setUser(LOCAL_USER);
     setSession(null);
     setProfile(null);
+    setIsCloudConnected(false);
   };
 
   const value = {
@@ -103,6 +148,9 @@ export function AuthProvider({ children }) {
     session,
     profile,
     isLoading,
+    isCloudConnected,
+    isOffline: !isCloudConnected,
+    cloudUser: isCloudConnected ? user : null,
     signInWithGoogle,
     signInWithEmail,
     signUp,

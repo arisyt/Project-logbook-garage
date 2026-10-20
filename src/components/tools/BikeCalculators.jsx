@@ -16,13 +16,18 @@ import {
 } from '../../utils/calculators';
 import { WHEEL_CIRCUMFERENCE_PRESETS } from '../../data/presets';
 
-export default function BikeCalculators({ vehicle, onUpdateVehicle }) {
+export default function BikeCalculators({
+  vehicle,
+  onUpdateVehicle,
+  section = 'ALL', // 'ALL' | 'PRESSURE' | 'GEAR' | 'MATRIX'
+}) {
   // --- 1. Tire Pressure State ---
   const [riderWeightKg, setRiderWeightKg] = useState(vehicle?.riderWeightKg || 68);
   const [bikeWeightKg, setBikeWeightKg] = useState(vehicle?.bikeWeightKg || 8.5);
   const [tireWidthMm, setTireWidthMm] = useState(vehicle?.tireWidthMm || 28);
   const [surface, setSurface] = useState('dry_tarmac'); // 'dry_tarmac' | 'wet_tarmac' | 'gravel'
   const [isTubeless, setIsTubeless] = useState(vehicle?.isTubeless ?? true);
+  const [isSaved, setIsSaved] = useState(false);
 
   // Pressure calculations
   const pressure = calculateBikeTirePressure({
@@ -40,7 +45,8 @@ export default function BikeCalculators({ vehicle, onUpdateVehicle }) {
       tireWidthMm: Number(tireWidthMm) || 28,
       isTubeless,
     });
-    alert('Spesifikasi tersimpan ke profil sepeda ini!');
+    setIsSaved(true);
+    setTimeout(() => setIsSaved(false), 2500);
   };
 
   // --- 2. Gear Ratio & Speed State ---
@@ -59,44 +65,55 @@ export default function BikeCalculators({ vehicle, onUpdateVehicle }) {
     wheelCircumferenceMm,
   });
 
+  const showPressure = section === 'ALL' || section === 'PRESSURE';
+  const showGear = section === 'ALL' || section === 'GEAR';
+  const showMatrix = section === 'ALL' || section === 'MATRIX';
+
   return (
     <div className="space-y-6">
       {/* 2-Column Responsive Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Card 1: Frank Berto Smart Tire Pressure Calculator */}
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-5">
-          <div className="flex items-center justify-between pb-2 border-b border-slate-800">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <Gauge className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-base font-bold text-white">Kalkulator Tekanan Ban Sepeda</h2>
-                <p className="text-xs text-slate-400 font-mono">
-                  Model Frank Berto (Optimasi rolling resistance & kenyamanan)
-                </p>
-              </div>
-            </div>
+      {(showPressure || showGear) && (
+        <div className={`grid gap-6 ${showPressure && showGear ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+          {/* Card 1: Frank Berto Smart Tire Pressure Calculator */}
+          {showPressure && (
+            <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-4 sm:space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shrink-0">
+                    <Gauge className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-base font-bold text-white truncate">Kalkulator Tekanan Ban Sepeda</h2>
+                    <p className="text-xs text-slate-400 font-mono truncate">
+                      Model Frank Berto (Rolling resistance & kenyamanan)
+                    </p>
+                  </div>
+                </div>
 
-            <button
-              onClick={handleSaveToBikeProfile}
-              className="px-2.5 py-1.5 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 text-xs font-mono transition border border-emerald-500/30 flex items-center gap-1"
-              title="Simpan parameter ini ke data sepeda aktif"
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>Simpan Profil</span>
-            </button>
-          </div>
+                <button
+                  onClick={handleSaveToBikeProfile}
+                  className={`self-start sm:self-auto px-3 py-1.5 rounded-lg text-xs font-mono transition border flex items-center gap-1 shrink-0 ${
+                    isSaved
+                      ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50 font-bold'
+                      : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
+                  }`}
+                  title="Simpan parameter ini ke data sepeda aktif"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{isSaved ? 'Profil Tersimpan!' : 'Simpan Profil'}</span>
+                </button>
+              </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3.5 sm:space-y-4">
             {/* Weights */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1">
                   Bobot Rider (kg)
                 </label>
                 <input
                   type="number"
+                  inputMode="numeric"
                   min="30"
                   max="150"
                   value={riderWeightKg}
@@ -111,6 +128,7 @@ export default function BikeCalculators({ vehicle, onUpdateVehicle }) {
                 </label>
                 <input
                   type="number"
+                  inputMode="decimal"
                   step="0.1"
                   min="4"
                   max="30"
@@ -152,17 +170,17 @@ export default function BikeCalculators({ vehicle, onUpdateVehicle }) {
               <label className="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">
                 Kondisi Permukaan Jalan
               </label>
-              <div className="grid grid-cols-3 gap-2 text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
                 {[
                   { id: 'dry_tarmac', label: 'Aspal Mulus (Dry)' },
-                  { id: 'wet_tarmac', label: 'Aspal Kasar / Basah' },
+                  { id: 'wet_tarmac', label: 'Aspal Basah (Wet)' },
                   { id: 'gravel', label: 'Gravel / Kasar' },
                 ].map((s) => (
                   <button
                     key={s.id}
                     type="button"
                     onClick={() => setSurface(s.id)}
-                    className={`p-2 rounded-lg border text-center font-medium transition ${
+                    className={`p-2.5 rounded-lg border text-center font-medium transition ${
                       surface === s.id
                         ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
                         : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
@@ -175,46 +193,46 @@ export default function BikeCalculators({ vehicle, onUpdateVehicle }) {
             </div>
 
             {/* Tubeless Toggle */}
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between">
-              <div>
+            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between gap-3">
+              <div className="min-w-0">
                 <div className="text-xs font-semibold text-white">Setup Tubeless</div>
                 <div className="text-[10px] text-slate-400 font-mono">
-                  Menurunkan tekanan ~9% untuk daya cengkeram lebih tinggi tanpa risiko pinch-flat
+                  Menurunkan tekanan ~9% untuk kenyamanan tanpa risiko pinch-flat
                 </div>
               </div>
               <input
                 type="checkbox"
                 checked={isTubeless}
                 onChange={(e) => setIsTubeless(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
+                className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-emerald-500 cursor-pointer shrink-0"
               />
             </div>
 
             {/* Pressure Output Gauges */}
-            <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+            <div className="p-3.5 sm:p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
               <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400 flex justify-between">
-                <span>Rekomendasi Tekanan (42% F / 58% R)</span>
+                <span>Rekomendasi (42% F / 58% R)</span>
                 <span className="text-emerald-400">Total: {pressure.totalWeightKg} kg</span>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
                 {/* Front Wheel */}
-                <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-center space-y-1">
-                  <span className="text-[10px] font-mono text-slate-400 block uppercase font-bold">
-                    Ban Depan (Front)
+                <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-center space-y-1">
+                  <span className="text-[10px] font-mono text-slate-400 block uppercase font-bold truncate">
+                    Depan (Front)
                   </span>
-                  <div className="text-2xl font-mono font-extrabold text-cyan-400">
+                  <div className="text-xl sm:text-2xl font-mono font-extrabold text-cyan-400">
                     {pressure.frontPsi} <span className="text-xs font-normal text-slate-400">PSI</span>
                   </div>
                   <div className="text-xs font-mono text-slate-400">{pressure.frontBar} Bar</div>
                 </div>
 
                 {/* Rear Wheel */}
-                <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-center space-y-1">
-                  <span className="text-[10px] font-mono text-slate-400 block uppercase font-bold">
-                    Ban Belakang (Rear)
+                <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-center space-y-1">
+                  <span className="text-[10px] font-mono text-slate-400 block uppercase font-bold truncate">
+                    Belakang (Rear)
                   </span>
-                  <div className="text-2xl font-mono font-extrabold text-emerald-400">
+                  <div className="text-xl sm:text-2xl font-mono font-extrabold text-emerald-400">
                     {pressure.rearPsi} <span className="text-xs font-normal text-slate-400">PSI</span>
                   </div>
                   <div className="text-xs font-mono text-slate-400">{pressure.rearBar} Bar</div>
@@ -223,12 +241,14 @@ export default function BikeCalculators({ vehicle, onUpdateVehicle }) {
             </div>
           </div>
         </div>
+      )}
 
-        {/* Card 2: Gear Ratio & Cadence Speed Calculator */}
-        <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-5 flex flex-col justify-between">
-          <div className="space-y-4">
+      {/* Card 2: Gear Ratio & Cadence Speed Calculator */}
+      {showGear && (
+            <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-4 sm:space-y-5 flex flex-col justify-between">
+          <div className="space-y-3.5 sm:space-y-4">
             <div className="flex items-center gap-2.5 pb-2 border-b border-slate-800">
-              <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20">
+              <div className="p-2 rounded-lg bg-purple-500/10 text-purple-400 border border-purple-500/20 shrink-0">
                 <Zap className="w-5 h-5" />
               </div>
               <div>
@@ -244,7 +264,7 @@ export default function BikeCalculators({ vehicle, onUpdateVehicle }) {
               <label className="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">
                 Front Chainring (Teeth)
               </label>
-              <div className="grid grid-cols-4 gap-1.5 text-xs font-mono">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 text-xs font-mono">
                 {[
                   { label: '50T (Compact)', val: 50 },
                   { label: '34T (Inner)', val: 34 },
@@ -255,7 +275,7 @@ export default function BikeCalculators({ vehicle, onUpdateVehicle }) {
                     key={ring.val}
                     type="button"
                     onClick={() => setChainringTeeth(ring.val)}
-                    className={`py-1.5 rounded transition ${
+                    className={`py-2 px-2 rounded-lg transition text-center ${
                       chainringTeeth === ring.val
                         ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 font-bold'
                         : 'bg-slate-950 text-slate-400 border border-slate-800 hover:border-slate-700'
@@ -275,13 +295,13 @@ export default function BikeCalculators({ vehicle, onUpdateVehicle }) {
                 </label>
                 <span className="text-xs font-mono font-bold text-purple-400">{cassetteTeeth}T</span>
               </div>
-              <div className="grid grid-cols-6 gap-1 font-mono text-xs">
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-11 gap-1.5 font-mono text-xs">
                 {[11, 13, 15, 17, 19, 21, 24, 27, 30, 32, 34].map((cog) => (
                   <button
                     key={cog}
                     type="button"
                     onClick={() => setCassetteTeeth(cog)}
-                    className={`py-1.5 rounded transition ${
+                    className={`py-2 rounded-lg transition text-center ${
                       cassetteTeeth === cog
                         ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 font-bold'
                         : 'bg-slate-950 text-slate-400 border border-slate-800 hover:border-slate-700'
@@ -311,7 +331,7 @@ export default function BikeCalculators({ vehicle, onUpdateVehicle }) {
                 className="w-full accent-emerald-500 cursor-pointer"
               />
               <div className="flex justify-between text-[10px] font-mono text-slate-500 mt-0.5">
-                <span>50 RPM (Tanjakan berat)</span>
+                <span>50 RPM (Tanjakan)</span>
                 <span>85-90 RPM (Optimal)</span>
                 <span>120 RPM (Sprint)</span>
               </div>
@@ -337,51 +357,53 @@ export default function BikeCalculators({ vehicle, onUpdateVehicle }) {
           </div>
 
           {/* Telemetry Output Box */}
-          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 mt-4">
+          <div className="p-3.5 sm:p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 mt-4">
             <div className="text-[11px] font-mono uppercase tracking-wider text-slate-400">
               Hasil Rasio ({chainringTeeth}T × {cassetteTeeth}T @ {cadenceRpm} RPM)
             </div>
 
-            <div className="grid grid-cols-3 gap-2 text-center font-mono">
-              <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                <span className="text-[10px] text-slate-500 block uppercase">Gear Ratio</span>
-                <span className="text-base font-extrabold text-white">{gearTelemetry.gearRatio}</span>
+            <div className="grid grid-cols-3 gap-1.5 sm:gap-2 text-center font-mono">
+              <div className="p-2 sm:p-2.5 rounded-lg bg-slate-900 border border-slate-800 min-w-0">
+                <span className="text-[9px] sm:text-[10px] text-slate-500 block uppercase truncate">Ratio</span>
+                <span className="text-sm sm:text-base font-extrabold text-white truncate block">{gearTelemetry.gearRatio}</span>
               </div>
 
-              <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800">
-                <span className="text-[10px] text-slate-500 block uppercase">Development</span>
-                <span className="text-base font-extrabold text-cyan-400">
+              <div className="p-2 sm:p-2.5 rounded-lg bg-slate-900 border border-slate-800 min-w-0">
+                <span className="text-[9px] sm:text-[10px] text-slate-500 block uppercase truncate">Development</span>
+                <span className="text-sm sm:text-base font-extrabold text-cyan-400 truncate block">
                   {gearTelemetry.developmentMeters}m
                 </span>
               </div>
 
-              <div className="p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/30">
-                <span className="text-[10px] text-purple-400 block uppercase font-bold">
+              <div className="p-2 sm:p-2.5 rounded-lg bg-purple-500/10 border border-purple-500/30 min-w-0">
+                <span className="text-[9px] sm:text-[10px] text-purple-400 block uppercase font-bold truncate">
                   Kecepatan
                 </span>
-                <span className="text-xl font-extrabold text-purple-300">
-                  {gearTelemetry.speedKmh} <span className="text-xs font-normal">km/h</span>
+                <span className="text-base sm:text-xl font-extrabold text-purple-300 truncate block">
+                  {gearTelemetry.speedKmh} <span className="text-[9px] sm:text-xs font-normal">km/h</span>
                 </span>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
+    </div>
+  )}
 
       {/* Speed Matrix across entire Cassette */}
-      <div className="p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="text-xs font-mono font-bold text-white uppercase flex items-center gap-2">
-            <Layers className="w-4 h-4 text-emerald-400" />
-            <span>Matriks Kecepatan Komplit ({chainringTeeth}T Chainring @ {cadenceRpm} RPM)</span>
+      {showMatrix && (
+        <div className="p-4 sm:p-6 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5">
+            <div className="text-xs font-mono font-bold text-white uppercase flex items-center gap-2">
+              <Layers className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="truncate">Matriks Kecepatan Komplit ({chainringTeeth}T @ {cadenceRpm} RPM)</span>
+            </div>
+            <span className="text-[11px] font-mono text-slate-400">
+              Tabel rasio gir untuk sprocket 11-speed (klik untuk pilih gir)
+            </span>
           </div>
-          <span className="text-[11px] font-mono text-slate-400">
-            Tabel rasio gir untuk sprocket 11-speed
-          </span>
-        </div>
 
-        <div className="overflow-x-auto">
-          <div className="grid grid-cols-11 gap-2 min-w-[700px] text-center font-mono">
+          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-11 gap-1.5 sm:gap-2 text-center font-mono py-1">
             {sampleCassette11s.map((cog) => {
               const res = calculateGearRatioAndSpeed({
                 chainringTeeth,
@@ -395,9 +417,9 @@ export default function BikeCalculators({ vehicle, onUpdateVehicle }) {
                 <div
                   key={cog}
                   onClick={() => setCassetteTeeth(cog)}
-                  className={`p-2.5 rounded-xl border transition cursor-pointer ${
+                  className={`p-2 sm:p-2.5 rounded-xl border transition cursor-pointer select-none active:scale-95 ${
                     isSelected
-                      ? 'bg-purple-500/20 border-purple-500/50 text-purple-300 shadow-lg'
+                      ? 'bg-purple-500/20 border-purple-500/50 text-purple-300 shadow-lg ring-1 ring-purple-500/30'
                       : 'bg-slate-950 border-slate-800 hover:border-slate-700 text-slate-300'
                   }`}
                 >
@@ -412,7 +434,8 @@ export default function BikeCalculators({ vehicle, onUpdateVehicle }) {
             })}
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
+

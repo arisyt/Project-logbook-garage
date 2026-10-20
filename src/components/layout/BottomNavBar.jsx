@@ -86,15 +86,15 @@ export default function BottomNavBar({
 
       {/* Quick Actions Popup */}
       {fabOpen && (
-        <div className="fixed bottom-24 inset-x-0 z-40 flex justify-center lg:hidden px-4">
-          <div className="flex flex-col gap-2 w-full max-w-xs">
+        <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom,0px))] inset-x-0 z-40 flex justify-center lg:hidden px-4">
+          <div className="flex flex-col gap-2 w-full max-w-xs animate-in fade-in slide-in-from-bottom-4 duration-150">
             {quickActions.map((action) => {
               const Icon = action.icon;
               return (
                 <button
                   key={action.label}
                   onClick={action.onPress}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl border ${action.bg} backdrop-blur-xl shadow-xl transition active:scale-95`}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl border ${action.bg} bg-slate-900/90 backdrop-blur-xl shadow-2xl transition active:scale-95`}
                 >
                   <div className={`p-2 rounded-xl bg-slate-900/80 ${action.color}`}>
                     <Icon className="w-4 h-4" />
@@ -108,8 +108,8 @@ export default function BottomNavBar({
       )}
 
       {/* Bottom Nav Bar */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 bg-slate-900/95 backdrop-blur-2xl border-t border-slate-800/80 pb-[env(safe-area-inset-bottom)] lg:hidden">
-        <div className="flex items-end justify-around px-2 pt-2 pb-1">
+      <nav className="fixed bottom-0 inset-x-0 z-40 bg-slate-900/95 backdrop-blur-2xl border-t border-slate-800/80 pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] pr-[env(safe-area-inset-right,0px)] lg:hidden">
+        <div className="flex items-end justify-between px-1 pt-1.5 pb-1 max-w-lg mx-auto">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isFab = tab.id === '__fab__';
@@ -117,22 +117,23 @@ export default function BottomNavBar({
 
             if (isFab) {
               return (
-                <button
-                  key="fab"
-                  onClick={() => handleTabPress('__fab__')}
-                  className={`flex flex-col items-center justify-center mb-2 transition-transform active:scale-90 ${
-                    fabOpen ? 'rotate-45' : ''
-                  }`}
-                  aria-label="Quick actions"
-                >
-                  <div className="w-14 h-14 rounded-full bg-emerald-500 hover:bg-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/40 border-4 border-slate-900 transition">
-                    {fabOpen ? (
-                      <X className="w-6 h-6 text-slate-950" />
-                    ) : (
-                      <Plus className="w-6 h-6 text-slate-950" />
-                    )}
-                  </div>
-                </button>
+                <div key="fab" className="flex justify-center px-1 shrink-0">
+                  <button
+                    onClick={() => handleTabPress('__fab__')}
+                    className={`flex flex-col items-center justify-center mb-1.5 transition-transform active:scale-90 ${
+                      fabOpen ? 'rotate-45' : ''
+                    }`}
+                    aria-label="Quick actions"
+                  >
+                    <div className="w-12 h-12 rounded-full bg-emerald-500 hover:bg-emerald-400 flex items-center justify-center shadow-lg shadow-emerald-500/40 border-4 border-slate-900 transition">
+                      {fabOpen ? (
+                        <X className="w-5 h-5 text-slate-950" />
+                      ) : (
+                        <Plus className="w-5 h-5 text-slate-950" />
+                      )}
+                    </div>
+                  </button>
+                </div>
               );
             }
 
@@ -140,7 +141,7 @@ export default function BottomNavBar({
               <button
                 key={tab.id}
                 onClick={() => handleTabPress(tab.id)}
-                className="flex flex-col items-center gap-0.5 px-3 py-1.5 min-w-0 relative"
+                className="flex-1 flex flex-col items-center gap-0.5 px-1 py-1.5 min-w-0 relative"
                 aria-label={tab.label}
               >
                 <div className="relative">
@@ -157,14 +158,14 @@ export default function BottomNavBar({
                   )}
                 </div>
                 <span
-                  className={`text-[10px] font-mono transition truncate ${
+                  className={`text-[10px] font-mono transition truncate max-w-full ${
                     isActive ? 'text-emerald-400 font-semibold' : 'text-slate-500'
                   }`}
                 >
                   {tab.label}
                 </span>
                 {isActive && (
-                  <span className="absolute bottom-0 inset-x-3 h-0.5 rounded-full bg-emerald-400" />
+                  <span className="absolute bottom-0 inset-x-2 h-0.5 rounded-full bg-emerald-400" />
                 )}
               </button>
             );

@@ -110,7 +110,7 @@ export default function ComponentHealthView({
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl">
+      <div className="p-4 sm:p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6 shadow-xl">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">

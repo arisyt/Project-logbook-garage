@@ -11,6 +11,8 @@ import {
   Flame,
   Bike,
   ShieldAlert,
+  Cloud,
+  X,
 } from 'lucide-react';
 import { calculateComponentHealth } from '../../utils/calculators';
 
@@ -22,6 +24,7 @@ export default function Sidebar({
   onExport,
   onOpenImport,
   onResetData,
+  onOpenCloudModal,
   isMobileOpen,
   setIsMobileOpen,
 }) {
@@ -86,12 +89,12 @@ export default function Sidebar({
 
       {/* Sidebar Container */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 w-64 bg-slate-900 border-r border-slate-800 flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-          isMobileOpen ? 'translate-x-0' : '-translate-x-full'
+        className={`fixed top-0 bottom-0 left-0 z-40 w-64 max-w-[80vw] bg-slate-900 border-r border-slate-800 flex flex-col pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)] pl-[env(safe-area-inset-left,0px)] transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+          isMobileOpen ? 'translate-x-0 shadow-2xl' : '-translate-x-full'
         }`}
       >
         {/* Brand / Logo */}
-        <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div className="p-4 sm:p-5 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500/20 to-cyan-500/10 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
               <Wrench className="w-5 h-5" />
@@ -105,6 +108,14 @@ export default function Sidebar({
               </div>
             </div>
           </div>
+
+          <button
+            onClick={() => setIsMobileOpen(false)}
+            className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+            aria-label="Tutup Menu"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Navigation Links */}
@@ -174,9 +185,17 @@ export default function Sidebar({
 
         {/* Backup & System Tools Footer */}
         <div className="p-3 border-t border-slate-800 bg-slate-900/50 space-y-1 text-xs">
-          <div className="px-2 pb-1 text-[10px] font-mono font-semibold uppercase tracking-wider text-slate-500">
-            Local Storage & Data
-          </div>
+          <button
+            onClick={() => {
+              if (setIsMobileOpen) setIsMobileOpen(false);
+              if (onOpenCloudModal) onOpenCloudModal();
+            }}
+            className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-emerald-400 hover:bg-emerald-500/10 transition text-[11px] font-mono"
+            title="Cadangkan atau pulihkan data dari Supabase Cloud"
+          >
+            <Cloud className="w-3.5 h-3.5" />
+            <span>Cloud Backup &amp; Sinkron</span>
+          </button>
 
           <button
             onClick={onExport}

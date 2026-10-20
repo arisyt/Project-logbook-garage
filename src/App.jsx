@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { App as CapApp } from '@capacitor/app';
+import { StatusBar, Style } from '@capacitor/status-bar';
 import { useGarageStore } from './hooks/useGarageStore';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import AuthScreen from './components/auth/AuthScreen';
 import Sidebar from './components/layout/Sidebar';
 import Header from './components/layout/Header';
 import BottomNavBar from './components/layout/BottomNavBar';
@@ -14,14 +15,15 @@ import QuickOdoModal from './components/layout/QuickOdoModal';
 import AddVehicleModal from './components/layout/AddVehicleModal';
 import AddServiceLogModal from './components/logbook/AddServiceLogModal';
 import ImportModal from './components/layout/ImportModal';
+import CloudSyncModal from './components/layout/CloudSyncModal';
 import CelebrationToast from './components/common/CelebrationToast';
 
 /**
- * AppContent — inner shell that reads auth state and renders either
- * the login screen or the full application.
+ * AppContent — offline-first application shell that renders the full application
+ * directly without blocking on remote auth/network servers.
  */
 function AppContent() {
-  const { user, isLoading } = useAuth();
+  const { user } = useAuth();
 
   const {
     vehicles,
@@ -48,6 +50,9 @@ function AppContent() {
     importGarageBackupJSON,
     resetToSampleData,
     initStore,
+    backupToCloud,
+    restoreFromCloud,
+    lastCloudBackup,
   } = useGarageStore();
 
   // Modal states
@@ -55,23 +60,96 @@ function AppContent() {
   const [isAddVehicleOpen, setIsAddVehicleOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isAddServiceOpen, setIsAddServiceOpen] = useState(false);
+  const [isCloudModalOpen, setIsCloudModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [celebrationToast, setCelebrationToast] = useState(null);
 
-  // Initialize Supabase data load when user is available
-  React.useEffect(() => {
+  // Initialize data load when user is available and cloud connected
+  useEffect(() => {
     if (user?.id) {
       initStore(user.id);
     }
   }, [user?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Status Bar styling for Android mobile shell
+  useEffect(() => {
+    try {
+      StatusBar.setStyle({ style: Style.Dark });
+      StatusBar.setBackgroundColor({ color: '#090D16' });
+    } catch {
+      // Non-native web fallback
+    }
+  }, []);
+
+  // Track freshest navigation & modal states without re-attaching listeners
+  const backStateRef = useRef({
+    isQuickOdoOpen,
+    isAddVehicleOpen,
+    isImportOpen,
+    isAddServiceOpen,
+    isCloudModalOpen,
+    isMobileMenuOpen,
+    activeTab,
+  });
+
+  useEffect(() => {
+    backStateRef.current = {
+      isQuickOdoOpen,
+      isAddVehicleOpen,
+      isImportOpen,
+      isAddServiceOpen,
+      isCloudModalOpen,
+      isMobileMenuOpen,
+      activeTab,
+    };
+  });
+
+  // Android Native Back Button Hardware Listener (Single robust registration)
+  useEffect(() => {
+    let handle = null;
+    let isMounted = true;
+
+    CapApp.addListener('backButton', () => {
+      const s = backStateRef.current;
+      if (s.isQuickOdoOpen) { setIsQuickOdoOpen(false); return; }
+      if (s.isAddVehicleOpen) { setIsAddVehicleOpen(false); return; }
+      if (s.isImportOpen) { setIsImportOpen(false); return; }
+      if (s.isAddServiceOpen) { setIsAddServiceOpen(false); return; }
+      if (s.isCloudModalOpen) { setIsCloudModalOpen(false); return; }
+      if (s.isMobileMenuOpen) { setIsMobileMenuOpen(false); return; }
+
+      if (s.activeTab !== 'dashboard') {
+        setActiveTab('dashboard');
+        return;
+      }
+
+      CapApp.exitApp();
+    })
+      .then((h) => {
+        if (!isMounted) {
+          h.remove();
+        } else {
+          handle = h;
+        }
+      })
+      .catch(() => {
+        // Fallback for non-Capacitor web environments
+      });
+
+    return () => {
+      isMounted = false;
+      if (handle && typeof handle.remove === 'function') {
+        handle.remove();
+      }
+    };
+  }, []);
+
   // Derived: count of components that need attention (for BottomNavBar badge)
   const componentAlerts = useMemo(() => {
     return activeComponents.filter((c) => {
-      // rough check — status is determined in ComponentHealthView; replicate basic logic here
       const odoSinceService = (activeVehicle?.currentOdo || 0) - (c.lastServicedKm || 0);
       const kmPct = c.lifespanKm > 0 ? odoSinceService / c.lifespanKm : 0;
-      return kmPct >= 0.75; // warning or critical
+      return kmPct >= 0.75;
     }).length;
   }, [activeComponents, activeVehicle]);
 
@@ -103,24 +181,7 @@ function AppContent() {
     setIsAddServiceOpen(false);
   };
 
-  // --- Loading state ---
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-[#090D16] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 border-2 border-emerald-500/30 border-t-emerald-400 rounded-full animate-spin" />
-          <p className="text-slate-400 font-mono text-sm">Memuat sesi...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // --- Not authenticated ---
-  if (!user) {
-    return <AuthScreen />;
-  }
-
-  // --- Authenticated App ---
+  // --- Offline-First Application Shell ---
   return (
     <div className="min-h-screen bg-[#090D16] text-slate-100 flex relative overflow-x-hidden selection:bg-emerald-500/30 selection:text-emerald-200">
       {/* Subtle modern ambient background glows */}
@@ -137,6 +198,7 @@ function AppContent() {
         onExport={exportGarageBackupJSON}
         onOpenImport={() => setIsImportOpen(true)}
         onResetData={resetToSampleData}
+        onOpenCloudModal={() => setIsCloudModalOpen(true)}
         isMobileOpen={isMobileMenuOpen}
         setIsMobileOpen={setIsMobileMenuOpen}
       />
@@ -151,10 +213,11 @@ function AppContent() {
           onOpenAddModal={() => setIsAddVehicleOpen(true)}
           onOpenQuickOdo={() => setIsQuickOdoOpen(true)}
           onToggleMobileMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          onOpenCloudModal={() => setIsCloudModalOpen(true)}
         />
 
         {/* Dynamic Tab Body with Smooth Page Transitions */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24 lg:pb-8">
+        <main className="flex-1 p-3.5 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-[calc(6.5rem+env(safe-area-inset-bottom,0px))] lg:pb-8 pl-[max(0.875rem,env(safe-area-inset-left,0px))] pr-[max(0.875rem,env(safe-area-inset-right,0px))]">
           <AnimatePresence mode="wait">
             <motion.div
               key={`${activeTab}-${activeVehicle?.id || 'none'}`}
@@ -235,6 +298,17 @@ function AppContent() {
         isOpen={isImportOpen}
         onClose={() => setIsImportOpen(false)}
         onImportData={importGarageBackupJSON}
+      />
+
+      {/* Cloud Backup & Restore Modal */}
+      <CloudSyncModal
+        isOpen={isCloudModalOpen}
+        onClose={() => setIsCloudModalOpen(false)}
+        onBackupToCloud={backupToCloud}
+        onRestoreFromCloud={restoreFromCloud}
+        onExportJson={exportGarageBackupJSON}
+        onOpenImportJson={() => setIsImportOpen(true)}
+        lastBackupTime={lastCloudBackup}
       />
 
       {/* Quick Service modal launched from BottomNavBar FAB */}

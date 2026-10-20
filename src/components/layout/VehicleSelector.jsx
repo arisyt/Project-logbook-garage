@@ -67,52 +67,62 @@ export default function VehicleSelector({
       {/* Trigger Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-3 px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700/80 hover:border-slate-600 transition shadow-sm text-left group"
+        className="flex items-center gap-2 sm:gap-3 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-slate-900 border border-slate-700/80 hover:border-slate-600 transition shadow-sm text-left group min-w-0 max-w-full sm:max-w-none"
       >
-        <div className="p-2 rounded-lg bg-slate-800 text-slate-200 group-hover:text-emerald-400 transition">
-          <CurrentIcon className="w-4 h-4" />
+        <div className="p-1.5 sm:p-2 rounded-lg bg-slate-800 text-slate-200 group-hover:text-emerald-400 transition shrink-0">
+          <CurrentIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
         </div>
 
-        <div className="min-w-0 pr-1">
-          <div className="flex items-center gap-2">
+        <div className="min-w-0 flex-1 pr-1">
+          <div className="flex items-center gap-1.5">
             <span
-              className={`px-1.5 py-0.2 rounded text-[10px] font-mono font-bold border ${currentMeta.badgeClass}`}
+              className={`px-1.5 py-0.2 rounded text-[9px] sm:text-[10px] font-mono font-bold border shrink-0 ${currentMeta.badgeClass}`}
             >
               {currentMeta.label}
             </span>
-            <span className="text-xs font-semibold text-white truncate max-w-[150px] sm:max-w-[220px]">
+            <span className="text-xs font-semibold text-white truncate max-w-[130px] sm:max-w-[220px]">
               {activeVehicle?.name || 'Pilih Kendaraan'}
             </span>
           </div>
-          <div className="text-[11px] font-mono text-slate-400 flex items-center gap-2 mt-0.5">
-            {activeVehicle?.category === 'BICYCLE' ? (
-              <span>{activeVehicle?.groupset || 'Road / Gravel'}</span>
-            ) : (
-              <span>{activeVehicle?.plateNumber || '-'}</span>
-            )}
-            <span className="text-slate-600">•</span>
-            <span className="text-emerald-400 font-medium">
+          <div className="text-[10px] sm:text-[11px] font-mono text-slate-400 flex items-center gap-1.5 mt-0.5 truncate">
+            <span className="truncate">
+              {activeVehicle?.category === 'BICYCLE' ? (
+                activeVehicle?.groupset || 'Road / Gravel'
+              ) : (
+                activeVehicle?.plateNumber || '-'
+              )}
+            </span>
+            <span className="text-slate-600 shrink-0">•</span>
+            <span className="text-emerald-400 font-medium shrink-0">
               {new Intl.NumberFormat('id-ID').format(activeVehicle?.currentOdo || 0)} km
             </span>
           </div>
         </div>
 
         <ChevronDown
-          className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
+          className={`w-3.5 h-3.5 text-slate-400 shrink-0 transition-transform duration-200 ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
       </button>
 
+      {/* Mobile Backdrop */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm sm:hidden"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
       {/* Dropdown Menu */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: -5 }}
+            initial={{ opacity: 0, scale: 0.96, y: -4 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: -5 }}
+            exit={{ opacity: 0, scale: 0.96, y: -4 }}
             transition={{ duration: 0.15 }}
-            className="absolute left-0 mt-2 w-80 rounded-2xl bg-slate-900/95 backdrop-blur-2xl border border-slate-700/80 shadow-2xl z-50 overflow-hidden"
+            className="fixed left-3 right-3 top-[calc(3.75rem+env(safe-area-inset-top,0px))] max-h-[75vh] flex flex-col sm:absolute sm:top-full sm:left-0 sm:right-auto sm:w-80 sm:mt-2 sm:max-h-none rounded-2xl bg-slate-900/98 backdrop-blur-2xl border border-slate-700/80 shadow-2xl z-50 overflow-hidden"
           >
             <div className="p-3 border-b border-slate-800 flex items-center justify-between">
               <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-slate-400">
