@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Car,
   Flame,
@@ -9,6 +10,7 @@ import {
   Calendar,
   Layers,
 } from 'lucide-react';
+import { fireSuccessCelebration } from '../../utils/confetti';
 
 export default function AddVehicleModal({ isOpen, onClose, onAddVehicle }) {
   const [category, setCategory] = useState('CAR');
@@ -80,13 +82,22 @@ export default function AddVehicleModal({ isOpen, onClose, onAddVehicle }) {
     };
 
     onAddVehicle(payload);
+    fireSuccessCelebration();
     resetForm();
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-      <div className="w-full max-w-xl rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl overflow-hidden my-8">
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+            className="w-full max-w-xl rounded-2xl bg-slate-900/90 backdrop-blur-2xl border border-slate-700/80 shadow-2xl overflow-hidden my-8 relative"
+          >
         {/* Header */}
         <div className="p-4 border-b border-slate-800 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -426,7 +437,9 @@ export default function AddVehicleModal({ isOpen, onClose, onAddVehicle }) {
             </button>
           </div>
         </form>
-      </div>
+      </motion.div>
     </div>
+  )}
+</AnimatePresence>
   );
 }

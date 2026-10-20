@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import {
   Gauge,
   Wallet,
@@ -54,10 +55,10 @@ export default function Dashboard({
   const costAnalysis = getCostPerKmAnalysis(totalSpendRp, currentOdo, initialOdo, activeServiceLogs);
   const costPerKm = costAnalysis.costPerKm;
 
-  // Component Health counts
+  // Component Health counts (Dual-Threshold: KM & Months)
   const evaluatedComponents = activeComponents.map((c) => ({
     ...c,
-    health: calculateComponentHealth(currentOdo, c.installedAtKm, c.lifespanKm),
+    health: calculateComponentHealth(currentOdo, c),
   }));
 
   const healthyCount = evaluatedComponents.filter((c) => c.health.status === 'healthy').length;
@@ -102,9 +103,14 @@ export default function Dashboard({
   const VehicleIcon = meta.icon;
 
   return (
-    <div className="space-y-6">
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="space-y-6"
+    >
       {/* 1. Vehicle Hero Telemetry Banner */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900/90 to-slate-950 border border-slate-800 relative overflow-hidden shadow-xl">
+      <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-900/80 via-slate-900/60 to-slate-950/80 backdrop-blur-xl border border-slate-800/80 relative overflow-hidden shadow-xl">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex items-center gap-2.5">
@@ -160,10 +166,10 @@ export default function Dashboard({
       {/* 2. Key Telemetry 4-Column Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Card 1: Total Maintenance Spend */}
-        <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between">
+        <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 shadow-lg hover:shadow-emerald-500/5 hover:border-slate-700/80 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-xs font-mono uppercase tracking-wider">Total Servis</span>
-            <div className="p-2 rounded-lg bg-slate-800 text-slate-300">
+            <div className="p-2 rounded-xl bg-slate-800/80 text-slate-300 border border-slate-700/60">
               <Wallet className="w-4 h-4" />
             </div>
           </div>
@@ -178,10 +184,10 @@ export default function Dashboard({
         </div>
 
         {/* Card 2: Cost per Kilometer */}
-        <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between">
+        <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 shadow-lg hover:shadow-emerald-500/5 hover:border-slate-700/80 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-xs font-mono uppercase tracking-wider">Biaya / Km</span>
-            <div className="p-2 rounded-lg bg-slate-800 text-amber-400">
+            <div className="p-2 rounded-xl bg-slate-800/80 text-amber-400 border border-amber-500/20">
               <TrendingDown className="w-4 h-4" />
             </div>
           </div>
@@ -201,10 +207,10 @@ export default function Dashboard({
         </div>
 
         {/* Card 3: Component Health Breakdown */}
-        <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between">
+        <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 shadow-lg hover:shadow-emerald-500/5 hover:border-slate-700/80 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-xs font-mono uppercase tracking-wider">Status Komponen</span>
-            <div className="p-2 rounded-lg bg-slate-800 text-emerald-400">
+            <div className="p-2 rounded-xl bg-slate-800/80 text-emerald-400 border border-emerald-500/20">
               <Activity className="w-4 h-4" />
             </div>
           </div>
@@ -228,10 +234,10 @@ export default function Dashboard({
 
         {/* Card 4: Contextual Telemetry (Tax for Car/Motor, Tire Pressure for Bike) */}
         {isMotorized ? (
-          <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between">
+          <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 shadow-lg hover:shadow-emerald-500/5 hover:border-slate-700/80 transition-all flex flex-col justify-between">
             <div className="flex items-center justify-between text-slate-400 mb-2">
               <span className="text-xs font-mono uppercase tracking-wider">Pajak STNK Tahunan</span>
-              <div className="p-2 rounded-lg bg-slate-800 text-blue-400">
+              <div className="p-2 rounded-xl bg-slate-800/80 text-blue-400 border border-blue-500/20">
                 <Calendar className="w-4 h-4" />
               </div>
             </div>
@@ -257,10 +263,10 @@ export default function Dashboard({
             </div>
           </div>
         ) : (
-          <div className="p-5 rounded-xl bg-slate-900 border border-slate-800 flex flex-col justify-between">
+          <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 shadow-lg hover:shadow-emerald-500/5 hover:border-slate-700/80 transition-all flex flex-col justify-between">
             <div className="flex items-center justify-between text-slate-400 mb-2">
               <span className="text-xs font-mono uppercase tracking-wider">Tekanan Ban Ideal</span>
-              <div className="p-2 rounded-lg bg-slate-800 text-cyan-400">
+              <div className="p-2 rounded-xl bg-slate-800/80 text-cyan-400 border border-cyan-500/20">
                 <Gauge className="w-4 h-4" />
               </div>
             </div>
@@ -278,7 +284,7 @@ export default function Dashboard({
 
       {/* 3. Urgent Component Attention Banner (if warning or critical) */}
       {urgentComponents.length > 0 && (
-        <div className="p-5 rounded-2xl bg-slate-900/90 border border-rose-500/30 space-y-3">
+        <div className="p-5 rounded-2xl bg-slate-900/70 backdrop-blur-xl border border-rose-500/40 shadow-xl shadow-rose-950/20 space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-rose-400 font-mono text-xs font-bold uppercase tracking-wider">
               <ShieldAlert className="w-4 h-4" />
@@ -297,7 +303,11 @@ export default function Dashboard({
             {urgentComponents.slice(0, 3).map((comp) => (
               <div
                 key={comp.id}
-                className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2"
+                className={`p-3.5 rounded-xl transition ${
+                  comp.health.status === 'critical'
+                    ? 'bg-slate-950/80 border border-rose-500/50 shadow-md shadow-rose-950/30 ring-1 ring-rose-500/20'
+                    : 'bg-slate-950/80 border border-slate-800/80'
+                } space-y-2`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -307,7 +317,7 @@ export default function Dashboard({
                   <span
                     className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold whitespace-nowrap ${
                       comp.health.status === 'critical'
-                        ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                        ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30 animate-pulse'
                         : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
                     }`}
                   >
@@ -317,16 +327,32 @@ export default function Dashboard({
 
                 {/* Progress bar */}
                 <div>
-                  <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-slate-900 rounded-full h-1.5 overflow-hidden">
                     <div
                       className={`h-full rounded-full ${
-                        comp.health.status === 'critical' ? 'bg-rose-500' : 'bg-amber-500'
+                        comp.health.status === 'critical'
+                          ? 'bg-gradient-to-r from-rose-600 to-red-400'
+                          : 'bg-gradient-to-r from-amber-500 to-yellow-400'
                       }`}
                       style={{ width: `${comp.health.percentage}%` }}
                     />
                   </div>
                   <div className="flex justify-between items-center text-[10px] font-mono mt-1 text-slate-400">
-                    <span>Sisa: {comp.health.remainingKm > 0 ? `${formatKm(comp.health.remainingKm)}` : 'Lewat waktu!'}</span>
+                    <span>{comp.health.urgencyText}</span>
+                    <button
+                      onClick={() => onResetComponent(comp.id)}
+                      className="text-emerald-400 hover:underline flex items-center gap-0.5"
+                    >
+                      <RotateCcw className="w-2.5 h-2.5" />
+                      <span>Servis</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
                     <span>{comp.health.percentage}%</span>
                   </div>
                 </div>
@@ -404,6 +430,6 @@ export default function Dashboard({
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
   );
 }

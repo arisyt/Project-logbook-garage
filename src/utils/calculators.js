@@ -4,52 +4,215 @@
  */
 
 /**
- * Calculate component health percentage and wear status based on odometer deltas.
+ * Calculate component health percentage and wear status based on Dual-Threshold Logic:
+ * Distance elapsed (KM) vs Time elapsed (Months/Days since last service date).
+ * Whichever threshold reaches critical first determines the wear status.
+ *
  * Thresholds:
- * - Hijau (Aman): Sisa Umur > 25% dan sisa KM > 0
- * - Kuning (Waktunya Servis): Sisa Umur <= 25% dan sisa KM > 0
- * - Merah (Overdue / Telat Servis): Sisa KM <= 0
+ * - Hijau (Aman): Sisa Umur > 25% dan belum melewati batas KM/waktu
+ * - Kuning (Waktunya Servis): Sisa Umur <= 25% dan belum melewati batas
+ * - Merah (Overdue / Telat Servis): Sisa KM <= 0 ATAU sisa hari <= 0
  *
  * @param {number} currentOdo - Current vehicle odometer in km
- * @param {number} installedAtKm - Odometer reading when component was installed
- * @param {number} lifespanKm - Target lifespan interval in km
- * @returns {object} Health telemetry object
+ * @param {number|object} installedAtKmOrComp - Installation odo or component object
+ * @param {number} [lifespanKmArg] - Target lifespan interval in km
+ * @param {number} [lifespanMonthsArg] - Target lifespan in months (optional)
+ * @param {string} [lastServicedDateArg] - Date string YYYY-MM-DD (optional)
+ * @returns {object} Health telemetry object with dual-threshold analytics
  */
-export function calculateComponentHealth(currentOdo, installedAtKm, lifespanKm) {
+export function calculateComponentHealth(
+  currentOdo,
+  installedAtKmOrComp,
+  lifespanKmArg,
+  lifespanMonthsArg,
+  lastServicedDateArg
+) {
+  // Support passing component object directly as second argument:
+  let installedAtKm = 0;
+  let lifespanKm = 1;
+  let lifespanMonths = null;
+  let lastServicedDate = null;
+
+  if (typeof installedAtKmOrComp === 'object' && installedAtKmOrComp !== null) {
+    installedAtKm = installedAtKmOrComp.installedAtKm ?? installedAtKmOrComp.lastServicedKm ?? 0;
+    lifespanKm = installedAtKmOrComp.lifespanKm ?? 1;
+    lifespanMonths = installedAtKmOrComp.lifespanMonths ?? null;
+    lastServicedDate = installedAtKmOrComp.lastServicedDate ?? null;
+  } else {
+    installedAtKm = Number(installedAtKmOrComp) || 0;
+    lifespanKm = Number(lifespanKmArg) || 1;
+    lifespanMonths = lifespanMonthsArg ? Number(lifespanMonthsArg) : null;
+    lastServicedDate = lastServicedDateArg || null;
+  }
+
   const current = Number(currentOdo) || 0;
   const installed = Number(installedAtKm) || 0;
   const lifespan = Math.max(1, Number(lifespanKm) || 1);
 
+  // 1. Distance Metric (KM)
   const kmElapsed = Math.max(0, current - installed);
   const remainingKm = lifespan - kmElapsed;
-  const percentage = Math.max(0, Math.min(100, Math.round((remainingKm / lifespan) * 100)));
+  const percentageKm = Math.max(0, Math.min(100, Math.round((remainingKm / lifespan) * 100)));
+  const isKmOverdue = remainingKm <= 0;
+
+  // 2. Time Metric (Months & Days)
+  let timeMetrics = null;
+  let isTimeActive = false;
+  let percentageTime = 100;
+  let isTimeOverdue = false;
+
+  if (lifespanMonths && Number(lifespanMonths) > 0 && lastServicedDate) {
+    const servicedDateObj = new Date(lastServicedDate);
+    if (!isNaN(servicedDateObj.getTime())) {
+      isTimeActive = true;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const past = new Date(servicedDateObj);
+      past.setHours(0, 0, 0, 0);
+
+      const daysElapsed = Math.max(0, Math.floor((today.getTime() - past.getTime()) / (1000 * 60 * 60 * 24)));
+      const targetDays = Math.max(1, Math.round(Number(lifespanMonths) * 30.4375));
+      const remainingDays = targetDays - daysElapsed;
+      percentageTime = Math.max(0, Math.min(100, Math.round((remainingDays / targetDays) * 100)));
+      isTimeOverdue = remainingDays <= 0;
+
+      timeMetrics = {
+        lifespanMonths: Number(lifespanMonths),
+        lastServicedDate,
+        daysElapsed,
+        targetDays,
+        remainingDays,
+        percentageTime,
+        isTimeOverdue,
+      };
+    }
+  }
+
+  // 3. Dual-Threshold Synthesis (Whichever is reached first)
+  let percentage = percentageKm;
+  let limitingFactor = 'km'; // 'km' | 'time'
+  let isOverdue = isKmOverdue;
+
+  if (isTimeActive) {
+    if (percentageTime < percentageKm) {
+      percentage = percentageTime;
+      limitingFactor = 'time';
+    } else {
+      percentage = percentageKm;
+      limitingFactor = 'km';
+    }
+    isOverdue = isKmOverdue || isTimeOverdue;
+  }
 
   let status = 'healthy';
   let statusColor = 'emerald';
   let label = 'AMAN';
+  let urgencyText = 'Kondisi Prima';
 
-  if (remainingKm <= 0 || percentage <= 0) {
+  if (isOverdue || percentage <= 0) {
     status = 'critical';
     statusColor = 'rose';
     label = 'OVERDUE';
+    if (isKmOverdue && isTimeOverdue) {
+      urgencyText = 'Batas KM & Waktu Terlewati';
+    } else if (isTimeOverdue) {
+      urgencyText = `Batas Waktu Terlewati (${timeMetrics.lifespanMonths} bln)`;
+    } else {
+      urgencyText = 'Batas Jarak KM Terlewati';
+    }
   } else if (percentage <= 25) {
     status = 'warning';
     statusColor = 'amber';
     label = 'WAKTUNYA SERVIS';
+    urgencyText =
+      limitingFactor === 'time'
+        ? `Waktu pemakaian hampir habis (${timeMetrics.remainingDays} hari lagi)`
+        : `Jarak tempuh hampir habis (${formatKm(remainingKm)} lagi)`;
   } else {
     status = 'healthy';
     statusColor = 'emerald';
     label = 'AMAN';
+    urgencyText = isTimeActive
+      ? `${formatKm(remainingKm)} / ${timeMetrics.remainingDays} hari lagi`
+      : `${formatKm(remainingKm)} lagi`;
   }
 
   return {
     kmElapsed,
     remainingKm,
+    percentageKm,
+    isKmOverdue,
+    timeMetrics,
+    isTimeActive,
+    percentageTime,
+    isTimeOverdue,
     percentage,
+    limitingFactor,
     status,
     statusColor,
     label,
-    isOverdue: remainingKm <= 0,
+    urgencyText,
+    isOverdue,
+  };
+}
+
+/**
+ * Odometer Input Guard & Anomaly Detection.
+ * Validates odometer update inputs, warning if user attempts to rewind odometer
+ * or enters an unrealistically large leap (e.g. accidental extra zeroes).
+ *
+ * @param {number} currentOdo - Vehicle's current odometer in km
+ * @param {number} newOdo - Proposed new odometer in km
+ * @returns {object} Validation result { isValid, isBackward, isExcessiveJump, delta, message, warningLevel }
+ */
+export function validateOdometerInput(currentOdo, newOdo) {
+  const current = Math.max(0, Number(currentOdo) || 0);
+  const next = Number(newOdo);
+
+  if (isNaN(next) || next < 0) {
+    return {
+      isValid: false,
+      isBackward: false,
+      isExcessiveJump: false,
+      delta: 0,
+      warningLevel: 'danger',
+      message: 'Odometer harus berupa angka positif.',
+    };
+  }
+
+  const delta = next - current;
+
+  // 1. Backward Odometer
+  if (delta < 0) {
+    return {
+      isValid: true,
+      isBackward: true,
+      isExcessiveJump: false,
+      delta,
+      warningLevel: 'danger',
+      message: `Odometer baru (${formatKm(next)}) lebih rendah dari odometer tercatat (${formatKm(current)}). Terdeteksi pengurangan ${formatKm(Math.abs(delta))}.`,
+    };
+  }
+
+  // 2. Excessive Jump (> 15.000 km in one single update)
+  if (delta > 15000) {
+    return {
+      isValid: true,
+      isBackward: false,
+      isExcessiveJump: true,
+      delta,
+      warningLevel: 'warning',
+      message: `Lonjakan jarak sangat tinggi (+${formatKm(delta)}). Periksa kembali apakah terdapat kelebihan pengetikan angka 0.`,
+    };
+  }
+
+  return {
+    isValid: true,
+    isBackward: false,
+    isExcessiveJump: false,
+    delta,
+    warningLevel: 'none',
+    message: delta === 0 ? 'Odometer sama dengan catatan saat ini.' : `Penambahan jarak tempuh: +${formatKm(delta)}`,
   };
 }
 

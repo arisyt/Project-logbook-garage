@@ -28,11 +28,7 @@ export default function Sidebar({
   // Count critical or warning parts to display alert badge in navigation
   const componentAlertCount = activeComponents.filter((comp) => {
     if (!activeVehicle) return false;
-    const health = calculateComponentHealth(
-      activeVehicle.currentOdo,
-      comp.installedAtKm,
-      comp.lifespanKm
-    );
+    const health = calculateComponentHealth(activeVehicle.currentOdo, comp);
     return health.status === 'critical' || health.status === 'warning';
   }).length;
 

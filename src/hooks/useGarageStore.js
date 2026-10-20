@@ -32,6 +32,23 @@ export function useGarageStore() {
               parsed.version = '1.2.0';
             }
           }
+
+          // Backfill lifespanMonths for components that have none
+          if (Array.isArray(parsed.components)) {
+            parsed.components = parsed.components.map((comp) => {
+              if (comp.lifespanMonths !== undefined && comp.lifespanMonths !== null) return comp;
+              const vehicle = parsed.vehicles.find((v) => v.id === comp.vehicleId);
+              const catPresets = COMPONENT_PRESETS[vehicle?.category || 'MOTORCYCLE'] || [];
+              const preset = catPresets.find(
+                (p) => (comp.key && p.key === comp.key) || p.name.toLowerCase() === comp.name.toLowerCase()
+              );
+              return {
+                ...comp,
+                lifespanMonths: preset?.lifespanMonths || null,
+              };
+            });
+          }
+
           return parsed;
         }
       }
@@ -155,6 +172,7 @@ export function useGarageStore() {
       installedAtKm: currentOdo,
       lastServicedKm: currentOdo,
       lifespanKm: preset.lifespanKm,
+      lifespanMonths: preset.lifespanMonths || null,
       lastServicedDate: new Date().toISOString().split('T')[0],
       notes: preset.description || '',
     }));
@@ -213,6 +231,7 @@ export function useGarageStore() {
       installedAtKm: Number(componentPayload.installedAtKm) || 0,
       lastServicedKm: Number(componentPayload.installedAtKm) || 0,
       lifespanKm: Math.max(10, Number(componentPayload.lifespanKm) || 5000),
+      lifespanMonths: componentPayload.lifespanMonths ? Number(componentPayload.lifespanMonths) : null,
       lastServicedDate: componentPayload.lastServicedDate || new Date().toISOString().split('T')[0],
       notes: componentPayload.notes || '',
     };
@@ -382,6 +401,7 @@ export function useGarageStore() {
             installedAtKm: vehicle.currentOdo,
             lastServicedKm: vehicle.currentOdo,
             lifespanKm: preset.lifespanKm,
+            lifespanMonths: preset.lifespanMonths || null,
             lastServicedDate: new Date().toISOString().split('T')[0],
             notes: preset.description || '',
           });

@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { motion } from 'framer-motion';
 import {
   Activity,
   Plus,
@@ -68,7 +69,7 @@ export default function ComponentHealthView({
   const evaluated = useMemo(() => {
     return components.map((comp) => ({
       ...comp,
-      health: calculateComponentHealth(vehicle.currentOdo, comp.installedAtKm, comp.lifespanKm),
+      health: calculateComponentHealth(vehicle.currentOdo, comp),
     }));
   }, [components, vehicle.currentOdo]);
 
@@ -359,8 +360,22 @@ export default function ComponentHealthView({
           </button>
         </div>
       ) : viewMode === 'GRID' ? (
-        /* 1. Grid of Component Cards */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        /* 1. Grid of Component Cards with Staggered Framer Motion Animation */
+        <motion.div
+          key={`${vehicle.id}-${filterStatus}-${selectedCategory}`}
+          variants={{
+            hidden: { opacity: 0 },
+            visible: {
+              opacity: 1,
+              transition: {
+                staggerChildren: 0.04,
+              },
+            },
+          }}
+          initial="hidden"
+          animate="visible"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+        >
           {filteredComponents.map((comp) => (
             <ComponentCard
               key={comp.id}
@@ -370,7 +385,7 @@ export default function ComponentHealthView({
               onDeleteComponent={onDeleteComponent}
             />
           ))}
-        </div>
+        </motion.div>
       ) : (
         /* 2. Structured Table View */
         <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-xl overflow-x-auto">

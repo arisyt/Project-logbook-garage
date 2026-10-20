@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus,
   X,
@@ -24,8 +25,11 @@ import {
   matchComponentByKey,
   calculateComponentHealth,
   parseCurrencyInput,
+  validateOdometerInput,
 } from '../../utils/calculators';
 import { MOTOR_SERVICE_PACKAGES } from '../../data/presets';
+import { fireSuccessCelebration } from '../../utils/confetti';
+import OdometerGuardAlert from '../common/OdometerGuardAlert';
 
 export default function AddServiceLogModal({
   isOpen,
@@ -42,6 +46,8 @@ export default function AddServiceLogModal({
   const [costRp, setCostRp] = useState('');
   const [workshop, setWorkshop] = useState('');
   const [notes, setNotes] = useState('');
+  const [isGuardConfirmed, setIsGuardConfirmed] = useState(false);
+  const [formError, setFormError] = useState('');
 
   // Smart Reset States
   const [autoResetEnabled, setAutoResetEnabled] = useState(true);
@@ -53,6 +59,8 @@ export default function AddServiceLogModal({
     if (vehicle && isOpen) {
       setOdometer(vehicle.currentOdo || 0);
       setDate(new Date().toISOString().split('T')[0]);
+      setIsGuardConfirmed(false);
+      setFormError('');
 
       if (initialPackageId) {
         applyPackagePreset(initialPackageId);
@@ -65,9 +73,12 @@ export default function AddServiceLogModal({
     }
   }, [vehicle, isOpen, initialPackageId]);
 
-  if (!isOpen || !vehicle) return null;
+  if (!vehicle) return null;
 
   const isMotorcycle = vehicle.category === 'MOTORCYCLE';
+  const currentVehicleOdo = Number(vehicle.currentOdo) || 0;
+  const inputOdo = Number(odometer) || 0;
+  const odoValidation = validateOdometerInput(currentVehicleOdo, inputOdo);
 
   /**
    * Apply a service package preset (e.g. Paket Ganti Oli Rutin, Tune Up, CVT Lengkap)
@@ -109,7 +120,7 @@ export default function AddServiceLogModal({
    * Toggle individual component
    */
   const toggleComponentSelect = (compId) => {
-    setSelectedPackageId('CUSTOM'); // Switch to custom if user manually edits
+    setSelectedPackageId('CUSTOM');
     setSelectedComponentIds((prev) =>
       prev.includes(compId) ? prev.filter((id) => id !== compId) : [...prev, compId]
     );
@@ -137,16 +148,26 @@ export default function AddServiceLogModal({
     setSelectedComponentIds([]);
     setSelectedPackageId('CUSTOM');
     setAutoResetEnabled(true);
+    setIsGuardConfirmed(false);
+    setFormError('');
   };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim()) {
+      setFormError('Judul kegiatan servis tidak boleh kosong.');
+      return;
+    }
+
+    if (odoValidation.warningLevel !== 'none' && !isGuardConfirmed) {
+      setFormError('Mohon centang kotak konfirmasi peringatan odometer sebelum menyimpan.');
+      return;
+    }
 
     onAddServiceLog({
       vehicleId: vehicle.id,
       date,
-      odometer: Number(odometer) || 0,
+      odometer: inputOdo,
       category,
       title: title.trim(),
       costRp: parseCurrencyInput(costRp),
@@ -154,6 +175,9 @@ export default function AddServiceLogModal({
       notes: notes.trim(),
       replacedComponentIds: autoResetEnabled ? selectedComponentIds : [],
     });
+
+    // Fire celebratory confetti if components were reset or service logged
+    fireSuccessCelebration();
 
     resetForm();
     onClose();
@@ -167,330 +191,355 @@ export default function AddServiceLogModal({
     { id: 'INSPECTION', label: 'Inspeksi & Diagnostic' },
   ];
 
+  const isSubmitDisabled = odoValidation.warningLevel !== 'none' && !isGuardConfirmed;
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200 overflow-y-auto">
-      <div className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-slate-700 shadow-2xl overflow-hidden my-6">
-        {/* Header */}
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              <ClipboardList className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-sm text-white">Catat Servis / Perawatan Baru</h3>
-              <p className="text-[11px] font-mono text-slate-400">
-                {vehicle.name} • Odometer: {new Intl.NumberFormat('id-ID').format(vehicle.currentOdo)} km
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+            className="w-full max-w-2xl rounded-2xl bg-slate-900/90 backdrop-blur-2xl border border-slate-700/80 shadow-2xl overflow-hidden my-6 relative"
           >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+            {/* Ambient subtle glow */}
+            <div className="absolute -top-20 -right-20 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          {/* Smart Preset & Reset Komponen Otomatis Section */}
-          <div className="p-4 rounded-xl bg-slate-950/80 border border-emerald-500/30 space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="auto-reset-toggle"
-                  checked={autoResetEnabled}
-                  onChange={(e) => setAutoResetEnabled(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-emerald-500 cursor-pointer"
-                />
-                <label
-                  htmlFor="auto-reset-toggle"
-                  className="text-xs font-mono font-bold text-emerald-400 cursor-pointer flex items-center gap-1.5"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Aktifkan Reset Komponen Otomatis</span>
-                </label>
+            {/* Header */}
+            <div className="p-4 border-b border-slate-800/80 flex items-center justify-between relative z-10">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <ClipboardList className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-white">Catat Servis / Perawatan Baru</h3>
+                  <p className="text-[11px] font-mono text-slate-400">
+                    {vehicle.name} • Odometer: {new Intl.NumberFormat('id-ID').format(vehicle.currentOdo)} km
+                  </p>
+                </div>
               </div>
-
-              {autoResetEnabled && (
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
-                  {selectedComponentIds.length} part dipilih
-                </span>
-              )}
+              <button
+                onClick={onClose}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            {autoResetEnabled && (
-              <div className="space-y-3 pt-1 border-t border-slate-800/80">
-                {/* Motor Quick Package Presets */}
-                {isMotorcycle ? (
-                  <div>
-                    <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 font-semibold">
-                        Pilih Preset Paket Servis Motor:
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => applyPackagePreset('CUSTOM')}
-                        className={`text-[10px] font-mono transition ${
-                          selectedPackageId === 'CUSTOM'
-                            ? 'text-cyan-400 font-bold underline'
-                            : 'text-slate-400 hover:text-white'
-                        }`}
-                      >
-                        Pilih Manual / Kustom
-                      </button>
-                    </div>
+            {/* Form Body */}
+            <form onSubmit={handleSubmit} className="p-5 space-y-4 relative z-10">
+              {/* Smart Preset & Reset Komponen Otomatis Section */}
+              <div className="p-4 rounded-xl bg-slate-950/70 border border-emerald-500/30 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="autoResetToggle"
+                      checked={autoResetEnabled}
+                      onChange={(e) => setAutoResetEnabled(e.target.checked)}
+                      className="rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-0 cursor-pointer"
+                    />
+                    <label
+                      htmlFor="autoResetToggle"
+                      className="text-xs font-semibold text-emerald-400 cursor-pointer flex items-center gap-1.5"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Aktifkan Smart Reset Suku Cadang Terkait Otomatis</span>
+                    </label>
+                  </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                      {MOTOR_SERVICE_PACKAGES.map((pkg) => {
-                        const isSelected = selectedPackageId === pkg.id;
-                        return (
+                  <span className="text-[10px] font-mono text-slate-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+                    {selectedComponentIds.length} part dipilih
+                  </span>
+                </div>
+
+                {autoResetEnabled && (
+                  <div className="space-y-3 pt-1 border-t border-slate-800/80">
+                    {/* Preset Buttons for Motorcycle */}
+                    {isMotorcycle && (
+                      <div>
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 block mb-1.5">
+                          Preset Paket Servis Motor:
+                        </span>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                          {MOTOR_SERVICE_PACKAGES.map((pkg) => {
+                            const isSelected = selectedPackageId === pkg.id;
+                            return (
+                              <button
+                                key={pkg.id}
+                                type="button"
+                                onClick={() => applyPackagePreset(pkg.id)}
+                                className={`p-2 rounded-lg border text-left text-xs font-mono transition flex flex-col justify-between ${
+                                  isSelected
+                                    ? 'bg-emerald-500/20 border-emerald-500/60 text-emerald-300 ring-1 ring-emerald-500/50'
+                                    : 'bg-slate-900/80 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-800/60'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between font-bold">
+                                  <span className="truncate">{pkg.name}</span>
+                                  {isSelected && <Check className="w-3 h-3 text-emerald-400 shrink-0" />}
+                                </div>
+                                <span className="text-[9px] text-slate-400 truncate mt-1">
+                                  {pkg.description}
+                                </span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Quick Tools: Select All / Clear */}
+                    {components.length > 0 && (
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-[11px] font-mono text-slate-400">
+                          Pilih komponen yang baru diservis/diganti:
+                        </span>
+                        <div className="flex gap-2">
                           <button
                             type="button"
-                            key={pkg.id}
-                            onClick={() => applyPackagePreset(pkg.id)}
-                            className={`p-2 rounded-lg border text-left text-xs font-mono transition flex flex-col justify-between ${
-                              isSelected
-                                ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300 shadow-sm'
-                                : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700 hover:bg-slate-850'
-                            }`}
+                            onClick={() => handleSelectAll(true)}
+                            className="text-[10px] font-mono text-emerald-400 hover:underline"
                           >
-                            <div className="font-bold truncate text-[11px] leading-tight">
-                              {pkg.name}
-                            </div>
-                            <div className="text-[9px] text-slate-400 truncate mt-1">
-                              {pkg.badge}
-                            </div>
+                            Centang Semua
                           </button>
-                        );
-                      })}
+                          <button
+                            type="button"
+                            onClick={() => handleSelectAll(false)}
+                            className="text-[10px] font-mono text-slate-400 hover:underline"
+                          >
+                            Bersihkan
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Interactive Component Checklist */}
+                    <div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-44 overflow-y-auto pr-1">
+                        {components.map((comp) => {
+                          const isChecked = selectedComponentIds.includes(comp.id);
+                          const health = calculateComponentHealth(
+                            odometer || vehicle.currentOdo,
+                            comp
+                          );
+
+                          return (
+                            <div
+                              key={comp.id}
+                              onClick={() => toggleComponentSelect(comp.id)}
+                              className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition select-none ${
+                                isChecked
+                                  ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                                  : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:border-slate-700'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 min-w-0 pr-2">
+                                {isChecked ? (
+                                  <CheckSquare className="w-4 h-4 text-emerald-400 shrink-0" />
+                                ) : (
+                                  <Square className="w-4 h-4 text-slate-600 shrink-0" />
+                                )}
+                                <span className="truncate font-medium text-white">{comp.name}</span>
+                              </div>
+
+                              <span
+                                className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold shrink-0 ${
+                                  health.status === 'critical'
+                                    ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                    : health.status === 'warning'
+                                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                    : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                }`}
+                              >
+                                {health.percentage}%
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-[11px] font-mono text-slate-400">
-                      Pilih komponen yang baru diservis/diganti:
-                    </span>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleSelectAll(true)}
-                        className="text-[10px] font-mono text-emerald-400 hover:underline"
-                      >
-                        Centang Semua
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSelectAll(false)}
-                        className="text-[10px] font-mono text-slate-400 hover:underline"
-                      >
-                        Bersihkan
-                      </button>
-                    </div>
+
+                    <p className="text-[10px] font-mono text-slate-400 bg-slate-900/60 p-2 rounded border border-slate-800">
+                      ⚡ Suku cadang terpilih akan di-reset ke odometer <span className="text-emerald-400 font-bold">{odometer} km</span> & tanggal servis hari ini.
+                    </p>
                   </div>
                 )}
+              </div>
 
-                {/* Interactive Component Checklist */}
+              {/* Title & Category */}
+              <div>
+                <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
+                  Nama Servis / Pekerjaan *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={title}
+                  onChange={(e) => {
+                    setTitle(e.target.value);
+                    setFormError('');
+                  }}
+                  placeholder="Contoh: Paket Ganti Oli + Servis CVT Berkala"
+                  className="w-full px-3 py-2 rounded-lg bg-slate-950/80 border border-slate-700 text-white font-medium text-xs focus:outline-none focus:border-emerald-500 transition"
+                />
+              </div>
+
+              {/* Category Selector */}
+              <div>
+                <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
+                  Kategori Servis
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat.id}
+                      type="button"
+                      onClick={() => setCategory(cat.id)}
+                      className={`px-2.5 py-1.5 rounded-lg border text-xs font-mono transition text-left ${
+                        category === cat.id
+                          ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
+                          : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Date & Odometer */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <div className="flex justify-between items-center text-[10px] font-mono text-slate-500 mb-1">
-                    <span>Daftar Suku Cadang Terkait:</span>
-                    <span>Klik kotak untuk mencentang/membatalkan</span>
-                  </div>
+                  <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
+                    Tanggal Servis *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950/80 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:border-emerald-500 transition"
+                  />
+                </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-44 overflow-y-auto pr-1">
-                    {components.map((comp) => {
-                      const isChecked = selectedComponentIds.includes(comp.id);
-                      const health = calculateComponentHealth(
-                        odometer || vehicle.currentOdo,
-                        comp.installedAtKm,
-                        comp.lifespanKm
-                      );
+                <div>
+                  <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
+                    Odometer Saat Servis (km) *
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    value={odometer}
+                    onChange={(e) => {
+                      setOdometer(e.target.value);
+                      setIsGuardConfirmed(false);
+                      setFormError('');
+                    }}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950/80 border border-slate-700 text-emerald-400 font-mono text-xs font-bold focus:outline-none focus:border-emerald-500 transition"
+                  />
+                </div>
+              </div>
 
-                      return (
-                        <div
-                          key={comp.id}
-                          onClick={() => toggleComponentSelect(comp.id)}
-                          className={`flex items-center justify-between p-2 rounded-lg border text-xs cursor-pointer transition select-none ${
-                            isChecked
-                              ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
-                              : 'bg-slate-900/80 border-slate-800 text-slate-400 hover:border-slate-700'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 min-w-0 pr-2">
-                            {isChecked ? (
-                              <CheckSquare className="w-4 h-4 text-emerald-400 shrink-0" />
-                            ) : (
-                              <Square className="w-4 h-4 text-slate-600 shrink-0" />
-                            )}
-                            <span className="truncate font-medium text-white">{comp.name}</span>
-                          </div>
+              {/* Odometer Guard Alert */}
+              <OdometerGuardAlert
+                currentOdo={currentVehicleOdo}
+                newOdo={inputOdo}
+                isConfirmed={isGuardConfirmed}
+                onToggleConfirm={(val) => {
+                  setIsGuardConfirmed(val);
+                  if (val) setFormError('');
+                }}
+              />
 
-                          {/* Mini health pill */}
-                          <span
-                            className={`px-1.5 py-0.2 rounded text-[9px] font-mono font-bold shrink-0 ${
-                              health.status === 'critical'
-                                ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                                : health.status === 'warning'
-                                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                                : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                            }`}
-                          >
-                            {health.percentage}%
-                          </span>
-                        </div>
-                      );
-                    })}
+              {/* Cost & Workshop */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
+                    Total Biaya (Rp)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={costRp}
+                    onChange={(e) => setCostRp(e.target.value)}
+                    placeholder="Contoh: 185000 atau 185.000"
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950/80 border border-slate-700 text-emerald-400 font-mono text-xs font-bold focus:outline-none focus:border-emerald-500 transition"
+                  />
+                  <div className="text-[10px] font-mono mt-1 text-slate-500">
+                    {costRp ? (
+                      <span className="text-emerald-400 font-semibold">
+                        Format: {formatRupiah(parseCurrencyInput(costRp))}
+                      </span>
+                    ) : (
+                      <span>Ketik nominal bebas (contoh: 150000 atau 150.000)</span>
+                    )}
                   </div>
                 </div>
 
-                <p className="text-[10px] font-mono text-slate-400 bg-slate-900/60 p-2 rounded border border-slate-800">
-                  ⚡ Odometer pasang komponen terpilih akan otomatis di-reset ke <span className="text-emerald-400 font-bold">{odometer} km</span>. Progress wear bar akan segar kembali ke 100% aman (0% wear).
-                </p>
+                <div>
+                  <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
+                    Nama Bengkel / DIY
+                  </label>
+                  <input
+                    type="text"
+                    value={workshop}
+                    onChange={(e) => setWorkshop(e.target.value)}
+                    placeholder="Bengkel AHASS / Yamaha DDS / DIY Rumah"
+                    className="w-full px-3 py-2 rounded-lg bg-slate-950/80 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500 transition"
+                  />
+                </div>
               </div>
-            )}
-          </div>
 
-          {/* Title / Jenis Servis */}
-          <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
-              Judul Servis / Pekerjaan *
-            </label>
-            <input
-              type="text"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Contoh: Paket Servis CVT Lengkap + Ganti Oli"
-              className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500 transition"
-            />
-          </div>
+              {/* Notes */}
+              <div>
+                <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
+                  Catatan Servis / Rincian
+                </label>
+                <textarea
+                  rows="2"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Catatan merk oli, berat roller yang dipasang, atau nomor faktur..."
+                  className="w-full px-3 py-2 rounded-lg bg-slate-950/80 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500 transition"
+                />
+              </div>
 
-          {/* Category Selector */}
-          <div>
-            <label className="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-1.5">
-              Kategori Servis
-            </label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {categories.map((cat) => (
+              {formError && (
+                <p className="text-xs text-rose-400 font-mono bg-rose-500/10 p-2.5 rounded-lg border border-rose-500/30">
+                  {formError}
+                </p>
+              )}
+
+              {/* Action Buttons */}
+              <div className="pt-2 flex items-center justify-end gap-2.5">
                 <button
                   type="button"
-                  key={cat.id}
-                  onClick={() => setCategory(cat.id)}
-                  className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold text-left border transition ${
-                    category === cat.id
-                      ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300'
-                      : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700'
+                  onClick={onClose}
+                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitDisabled}
+                  className={`px-5 py-2.5 rounded-xl text-xs font-bold font-mono transition flex items-center gap-1.5 shadow-lg ${
+                    isSubmitDisabled
+                      ? 'bg-slate-800 text-slate-500 border border-slate-700 cursor-not-allowed'
+                      : 'bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-emerald-500/20 active:scale-95'
                   }`}
                 >
-                  {cat.label}
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Simpan Catatan & Reset Komponen</span>
                 </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Date & Odometer */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
-                Tanggal Servis *
-              </label>
-              <input
-                type="date"
-                required
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white font-mono text-xs focus:outline-none focus:border-emerald-500 transition"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
-                Odometer Saat Servis (km) *
-              </label>
-              <input
-                type="number"
-                min="0"
-                required
-                value={odometer}
-                onChange={(e) => setOdometer(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-emerald-400 font-mono text-xs font-bold focus:outline-none focus:border-emerald-500 transition"
-              />
-            </div>
-          </div>
-
-          {/* Cost & Workshop */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
-                Total Biaya (Rp)
-              </label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={costRp}
-                onChange={(e) => setCostRp(e.target.value)}
-                placeholder="Contoh: 185000 atau 185.000"
-                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-emerald-400 font-mono text-xs font-bold focus:outline-none focus:border-emerald-500 transition"
-              />
-              <div className="text-[10px] font-mono mt-1 text-slate-500">
-                {costRp ? (
-                  <span className="text-emerald-400 font-semibold">
-                    Format: {formatRupiah(parseCurrencyInput(costRp))}
-                  </span>
-                ) : (
-                  <span>Ketik nominal bebas (contoh: 150000 atau 150.000)</span>
-                )}
               </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
-                Nama Bengkel / DIY
-              </label>
-              <input
-                type="text"
-                value={workshop}
-                onChange={(e) => setWorkshop(e.target.value)}
-                placeholder="Bengkel AHASS / Yamaha DDS / DIY Rumah"
-                className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500 transition"
-              />
-            </div>
-          </div>
-
-          {/* Notes */}
-          <div>
-            <label className="block text-xs font-mono uppercase tracking-wider text-slate-400 mb-1">
-              Catatan Servis / Rincian
-            </label>
-            <textarea
-              rows="2"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Catatan merk oli, berat roller yang dipasang, atau nomor faktur..."
-              className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500 transition"
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="pt-2 flex items-center justify-end gap-2.5">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold font-mono transition flex items-center gap-1.5 shadow-lg shadow-emerald-500/10"
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>Simpan Catatan & Reset Komponen</span>
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+            </form>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }
