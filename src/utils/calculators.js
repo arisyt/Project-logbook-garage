@@ -308,8 +308,12 @@ export function parseCurrencyInput(val) {
   const str = String(val).trim();
   if (!str) return 0;
 
+  // Handle standard Indonesian cents suffix like ",00", ",-", or ",0"
+  // so that "350.000,00" doesn't become 35000000.
+  const withoutCents = str.replace(/,\d{1,2}$/, '').replace(/,-$/, '');
+
   // Extract all digit characters
-  const digitsOnly = str.replace(/[^0-9]/g, '');
+  const digitsOnly = withoutCents.replace(/[^0-9]/g, '');
   if (!digitsOnly) return 0;
 
   return parseInt(digitsOnly, 10);

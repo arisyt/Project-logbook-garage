@@ -95,33 +95,10 @@ export default function ComponentHealthView({
     });
   }, [evaluated, filterStatus, selectedCategory]);
 
-  // Handler to load all 14 standard presets for motor
+  // Handler to load all standard presets for the vehicle via the store's syncVehiclePresets action
   const handleSyncPresets = () => {
-    const presets = COMPONENT_PRESETS[vehicle.category] || [];
-    let addedCount = 0;
-
-    presets.forEach((preset) => {
-      const exists = components.some(
-        (c) => (c.key && c.key === preset.key) || c.name.toLowerCase() === preset.name.toLowerCase()
-      );
-      if (!exists) {
-        onAddComponent({
-          vehicleId: vehicle.id,
-          key: preset.key,
-          name: preset.name,
-          category: preset.category,
-          installedAtKm: vehicle.currentOdo,
-          lifespanKm: preset.lifespanKm,
-          notes: preset.description || '',
-        });
-        addedCount++;
-      }
-    });
-
-    if (addedCount > 0) {
-      alert(`Berhasil menambahkan ${addedCount} suku cadang standar ke kendaraan ini!`);
-    } else {
-      alert('Semua suku cadang standar sudah lengkap terdaftar.');
+    if (onSyncPresets) {
+      onSyncPresets(vehicle.id);
     }
   };
 

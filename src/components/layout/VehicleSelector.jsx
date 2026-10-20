@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   Car,
   Flame,
@@ -104,82 +105,90 @@ export default function VehicleSelector({
       </button>
 
       {/* Dropdown Menu */}
-      {isOpen && (
-        <div className="absolute left-0 mt-2 w-80 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-          <div className="p-3 border-b border-slate-800 flex items-center justify-between">
-            <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-slate-400">
-              Garasi Kendaraan ({vehicles.length})
-            </span>
-            <button
-              onClick={() => {
-                setIsOpen(false);
-                onOpenAddModal();
-              }}
-              className="flex items-center gap-1 px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition text-[11px] font-mono font-medium"
-            >
-              <Plus className="w-3 h-3" />
-              <span>Unit Baru</span>
-            </button>
-          </div>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: -5 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -5 }}
+            transition={{ duration: 0.15 }}
+            className="absolute left-0 mt-2 w-80 rounded-2xl bg-slate-900/95 backdrop-blur-2xl border border-slate-700/80 shadow-2xl z-50 overflow-hidden"
+          >
+            <div className="p-3 border-b border-slate-800 flex items-center justify-between">
+              <span className="text-[11px] font-mono font-semibold uppercase tracking-wider text-slate-400">
+                Garasi Kendaraan ({vehicles.length})
+              </span>
+              <button
+                onClick={() => {
+                  setIsOpen(false);
+                  onOpenAddModal();
+                }}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 transition text-[11px] font-mono font-medium"
+              >
+                <Plus className="w-3 h-3" />
+                <span>Unit Baru</span>
+              </button>
+            </div>
 
-          <div className="max-h-72 overflow-y-auto p-1.5 space-y-1">
-            {vehicles.map((veh) => {
-              const meta = getCategoryMeta(veh.category);
-              const Icon = meta.icon;
-              const isSelected = veh.id === activeVehicle?.id;
+            <div className="max-h-72 overflow-y-auto p-1.5 space-y-1">
+              {vehicles.map((veh) => {
+                const meta = getCategoryMeta(veh.category);
+                const Icon = meta.icon;
+                const isSelected = veh.id === activeVehicle?.id;
 
-              return (
-                <button
-                  key={veh.id}
-                  onClick={() => {
-                    onSelectVehicle(veh.id);
-                    setIsOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between p-2.5 rounded-lg text-left transition ${
-                    isSelected
-                      ? 'bg-slate-800/90 border border-slate-700'
-                      : 'hover:bg-slate-800/40 border border-transparent'
-                  }`}
-                >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div
-                      className={`p-2 rounded-lg ${
-                        isSelected ? 'bg-slate-950 text-emerald-400' : 'bg-slate-800 text-slate-400'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
+                return (
+                  <button
+                    key={veh.id}
+                    onClick={() => {
+                      onSelectVehicle(veh.id);
+                      setIsOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left transition ${
+                      isSelected
+                        ? 'bg-slate-800/90 border border-slate-700 shadow-sm'
+                        : 'hover:bg-slate-800/40 border border-transparent'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`p-2 rounded-xl ${
+                          isSelected ? 'bg-slate-950 text-emerald-400' : 'bg-slate-800 text-slate-400'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4" />
+                      </div>
+
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-semibold text-white truncate max-w-[160px]">
+                            {veh.name}
+                          </span>
+                          <span
+                            className={`px-1 rounded text-[9px] font-mono font-bold border ${meta.badgeClass}`}
+                          >
+                            {meta.label}
+                          </span>
+                        </div>
+                        <div className="text-[10px] font-mono text-slate-400 flex items-center gap-1.5 mt-0.5">
+                          <span>
+                            {veh.category === 'BICYCLE' ? veh.brand : veh.plateNumber || veh.brand}
+                          </span>
+                          <span className="text-slate-600">•</span>
+                          <span className="text-emerald-400">
+                            {new Intl.NumberFormat('id-ID').format(veh.currentOdo)} km
+                          </span>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-xs font-semibold text-white truncate max-w-[160px]">
-                          {veh.name}
-                        </span>
-                        <span
-                          className={`px-1 rounded text-[9px] font-mono font-bold border ${meta.badgeClass}`}
-                        >
-                          {meta.label}
-                        </span>
-                      </div>
-                      <div className="text-[10px] font-mono text-slate-400 flex items-center gap-1.5 mt-0.5">
-                        <span>
-                          {veh.category === 'BICYCLE' ? veh.brand : veh.plateNumber || veh.brand}
-                        </span>
-                        <span className="text-slate-600">•</span>
-                        <span className="text-emerald-400">
-                          {new Intl.NumberFormat('id-ID').format(veh.currentOdo)} km
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {isSelected && <Check className="w-4 h-4 text-emerald-400 shrink-0" />}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      )}
+                    {isSelected && <Check className="w-4 h-4 text-emerald-400 shrink-0" />}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

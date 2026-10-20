@@ -1,12 +1,165 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { STARTER_GARAGE_DATA, COMPONENT_PRESETS } from '../data/presets';
 import { parseCurrencyInput } from '../utils/calculators';
+import { supabase } from '../utils/supabaseClient';
 
 const STORAGE_KEY = 'garage_logbook_v1';
+
+// ── Supabase snake_case → camelCase mappers ──────────────────────────────────
+
+const mapVehicle = (row) => ({
+  id: row.id,
+  userId: row.user_id,
+  name: row.name,
+  category: row.category,
+  brand: row.brand || '',
+  model: row.model || '',
+  year: row.year,
+  currentOdo: row.current_odo,
+  initialOdo: row.initial_odo,
+  notes: row.notes || '',
+  plateNumber: row.plate_number || '',
+  stnkExpiryDate: row.stnk_expiry_date || '',
+  plateExpiryDate: row.plate_expiry_date || '',
+  fuelType: row.fuel_type || '',
+  tankCapacityLiters: row.tank_capacity_liters ? Number(row.tank_capacity_liters) : null,
+  isMatic: row.is_matic || false,
+  isLiquidCooled: row.is_liquid_cooled || false,
+  frameset: row.frameset || '',
+  groupset: row.groupset || '',
+  wheelset: row.wheelset || '',
+  tireWidthMm: row.tire_width_mm || 28,
+  riderWeightKg: row.rider_weight_kg ? Number(row.rider_weight_kg) : 70,
+  bikeWeightKg: row.bike_weight_kg ? Number(row.bike_weight_kg) : 9,
+  isTubeless: row.is_tubeless ?? true,
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+const mapComponent = (row) => ({
+  id: row.id,
+  vehicleId: row.vehicle_id,
+  userId: row.user_id,
+  key: row.key || undefined,
+  name: row.name,
+  category: row.category || 'General',
+  installedAtKm: row.installed_at_km,
+  lastServicedKm: row.last_serviced_km,
+  lifespanKm: row.lifespan_km,
+  lifespanMonths: row.lifespan_months || null,
+  lastServicedDate: row.last_serviced_date || '',
+  notes: row.notes || '',
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+const mapServiceLog = (row) => ({
+  id: row.id,
+  vehicleId: row.vehicle_id,
+  userId: row.user_id,
+  date: row.date,
+  odometer: row.odometer,
+  category: row.category,
+  title: row.title,
+  costRp: row.cost_rp,
+  workshop: row.workshop || '',
+  notes: row.notes || '',
+  replacedComponentIds: [], // junction table not loaded here for simplicity
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+const mapFuelLog = (row) => ({
+  id: row.id,
+  vehicleId: row.vehicle_id,
+  userId: row.user_id,
+  date: row.date,
+  odometer: row.odometer,
+  liters: Number(row.liters),
+  totalCostRp: row.total_cost_rp,
+  pricePerLiterRp: Number(row.price_per_liter_rp),
+  isFullTank: row.is_full_tank ?? true,
+  notes: row.notes || '',
+  createdAt: row.created_at,
+  updatedAt: row.updated_at,
+});
+
+// ── Supabase camelCase → snake_case converters ───────────────────────────────
+
+const vehicleToRow = (v, userId) => ({
+  id: v.id,
+  user_id: userId,
+  name: v.name,
+  category: v.category,
+  brand: v.brand || '',
+  model: v.model || '',
+  year: v.year,
+  current_odo: v.currentOdo,
+  initial_odo: v.initialOdo,
+  notes: v.notes || '',
+  plate_number: v.plateNumber || null,
+  stnk_expiry_date: v.stnkExpiryDate || null,
+  plate_expiry_date: v.plateExpiryDate || null,
+  fuel_type: v.fuelType || null,
+  tank_capacity_liters: v.tankCapacityLiters || null,
+  is_matic: v.isMatic || false,
+  is_liquid_cooled: v.isLiquidCooled || false,
+  frameset: v.frameset || null,
+  groupset: v.groupset || null,
+  wheelset: v.wheelset || null,
+  tire_width_mm: v.tireWidthMm || null,
+  rider_weight_kg: v.riderWeightKg || null,
+  bike_weight_kg: v.bikeWeightKg || null,
+  is_tubeless: v.isTubeless ?? null,
+});
+
+const componentToRow = (c, userId) => ({
+  id: c.id,
+  vehicle_id: c.vehicleId,
+  user_id: userId,
+  key: c.key || null,
+  name: c.name,
+  category: c.category || 'General',
+  installed_at_km: c.installedAtKm,
+  last_serviced_km: c.lastServicedKm,
+  lifespan_km: c.lifespanKm,
+  lifespan_months: c.lifespanMonths || null,
+  last_serviced_date: c.lastServicedDate || null,
+  notes: c.notes || '',
+});
+
+const serviceLogToRow = (l, userId) => ({
+  id: l.id,
+  vehicle_id: l.vehicleId,
+  user_id: userId,
+  date: l.date,
+  odometer: l.odometer,
+  category: l.category,
+  title: l.title,
+  cost_rp: l.costRp,
+  workshop: l.workshop || '',
+  notes: l.notes || '',
+});
+
+const fuelLogToRow = (f, userId) => ({
+  id: f.id,
+  vehicle_id: f.vehicleId,
+  user_id: userId,
+  date: f.date,
+  odometer: f.odometer,
+  liters: f.liters,
+  total_cost_rp: f.totalCostRp,
+  price_per_liter_rp: f.pricePerLiterRp,
+  is_full_tank: f.isFullTank,
+  notes: f.notes || '',
+});
+
+// ── Store ────────────────────────────────────────────────────────────────────
 
 /**
  * Custom hook managing local-first persistent garage state, vehicle selection,
  * telemetry updates, component wear, service logs, and JSON backup/restore.
+ * Supabase sync is layered on top of every mutation without blocking the UI.
  */
 export function useGarageStore() {
   // 1. Initial State Hydration from LocalStorage with fallback and automatic migration
@@ -61,6 +214,9 @@ export function useGarageStore() {
   // Active navigation tab
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'health' | 'logbook' | 'tools'
 
+  // Track current userId for Supabase mutations
+  const userIdRef = useRef(null);
+
   // Persist to localStorage whenever garageData changes
   useEffect(() => {
     try {
@@ -69,6 +225,180 @@ export function useGarageStore() {
       console.error('Failed to persist to localStorage:', err);
     }
   }, [garageData]);
+
+  // ── Supabase helpers ────────────────────────────────────────────────────────
+
+const generateUUID = () => {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
+  /**
+   * Load all user data from Supabase and overwrite local state.
+   * Called once after login via initStore(userId).
+   */
+  const loadFromSupabase = useCallback(async (userId) => {
+    try {
+      const [
+        { data: vehicles, error: vErr },
+        { data: components, error: cErr },
+        { data: serviceLogs, error: slErr },
+        { data: fuelLogs, error: flErr },
+        { data: slComponents, error: slcErr },
+      ] = await Promise.all([
+        supabase.from('vehicles').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
+        supabase.from('components').select('*').eq('user_id', userId).order('created_at', { ascending: true }),
+        supabase.from('service_logs').select('*').eq('user_id', userId).order('date', { ascending: false }),
+        supabase.from('fuel_logs').select('*').eq('user_id', userId).order('date', { ascending: false }),
+        supabase.from('service_log_components').select('*').eq('user_id', userId),
+      ]);
+
+      if (vErr) { console.warn('[Supabase] vehicles fetch error:', vErr.message); return; }
+      if (cErr) { console.warn('[Supabase] components fetch error:', cErr.message); return; }
+      if (slErr) { console.warn('[Supabase] service_logs fetch error:', slErr.message); return; }
+      if (flErr) { console.warn('[Supabase] fuel_logs fetch error:', flErr.message); return; }
+      if (slcErr) { console.warn('[Supabase] service_log_components fetch error:', slcErr.message); }
+
+      if (!vehicles || vehicles.length === 0) {
+        // User has no cloud data yet — don't overwrite local starter data
+        return;
+      }
+
+      // Group junction records by service_log_id
+      const junctionByLogId = (slComponents || []).reduce((acc, row) => {
+        if (!acc[row.service_log_id]) acc[row.service_log_id] = [];
+        if (row.component_id) acc[row.service_log_id].push(row.component_id);
+        return acc;
+      }, {});
+
+      setGarageData((prev) => {
+        // Avoid stale/ghost activeVehicleId after loading from cloud
+        const nextActiveId = vehicles.some((v) => v.id === prev.activeVehicleId)
+          ? prev.activeVehicleId
+          : vehicles[0]?.id || '';
+
+        return {
+          ...prev,
+          activeVehicleId: nextActiveId,
+          vehicles: vehicles.map(mapVehicle),
+          components: (components || []).map(mapComponent),
+          serviceLogs: (serviceLogs || []).map((row) => ({
+            ...mapServiceLog(row),
+            replacedComponentIds: junctionByLogId[row.id] || [],
+          })),
+          fuelLogs: (fuelLogs || []).map(mapFuelLog),
+        };
+      });
+    } catch (err) {
+      console.warn('[Supabase] loadFromSupabase unexpected error:', err);
+    }
+  }, []);
+
+  /**
+   * initStore — call this when the user's auth session becomes available.
+   */
+  const initStore = useCallback(
+    (userId) => {
+      userIdRef.current = userId;
+      if (userId) {
+        loadFromSupabase(userId);
+      }
+    },
+    [loadFromSupabase]
+  );
+
+  // ── Supabase fire-and-forget wrappers ────────────────────────────────────────
+
+  const sbUpsertVehicle = (vehicle) => {
+    const uid = userIdRef.current;
+    if (!uid) return;
+    supabase.from('vehicles').upsert(vehicleToRow(vehicle, uid)).then(({ error }) => {
+      if (error) console.warn('[Supabase] upsert vehicle error:', error.message);
+    });
+  };
+
+  const sbDeleteVehicle = (vehicleId) => {
+    const uid = userIdRef.current;
+    if (!uid) return;
+    supabase.from('vehicles').delete().eq('id', vehicleId).then(({ error }) => {
+      if (error) console.warn('[Supabase] delete vehicle error:', error.message);
+    });
+  };
+
+  const sbUpsertComponents = (components) => {
+    const uid = userIdRef.current;
+    if (!uid || !components.length) return;
+    supabase.from('components').upsert(components.map((c) => componentToRow(c, uid))).then(({ error }) => {
+      if (error) console.warn('[Supabase] upsert components error:', error.message);
+    });
+  };
+
+  const sbDeleteComponent = (componentId) => {
+    const uid = userIdRef.current;
+    if (!uid) return;
+    supabase.from('components').delete().eq('id', componentId).then(({ error }) => {
+      if (error) console.warn('[Supabase] delete component error:', error.message);
+    });
+  };
+
+  const sbInsertServiceLog = async (log) => {
+    const uid = userIdRef.current;
+    if (!uid) return;
+    try {
+      const { error } = await supabase.from('service_logs').insert(serviceLogToRow(log, uid));
+      if (error) {
+        console.warn('[Supabase] insert service_log error:', error.message);
+        return;
+      }
+      if (log.replacedComponentIds && log.replacedComponentIds.length > 0) {
+        const junctionRows = log.replacedComponentIds.map((compId) => {
+          const comp = garageData.components.find((c) => c.id === compId);
+          return {
+            service_log_id: log.id,
+            component_id: compId,
+            user_id: uid,
+            component_name: comp?.name || 'Komponen',
+          };
+        });
+        const { error: jErr } = await supabase.from('service_log_components').insert(junctionRows);
+        if (jErr) console.warn('[Supabase] insert service_log_components error:', jErr.message);
+      }
+    } catch (err) {
+      console.warn('[Supabase] sbInsertServiceLog error:', err);
+    }
+  };
+
+  const sbDeleteServiceLog = (logId) => {
+    const uid = userIdRef.current;
+    if (!uid) return;
+    supabase.from('service_logs').delete().eq('id', logId).then(({ error }) => {
+      if (error) console.warn('[Supabase] delete service_log error:', error.message);
+    });
+  };
+
+  const sbInsertFuelLog = (log) => {
+    const uid = userIdRef.current;
+    if (!uid) return;
+    supabase.from('fuel_logs').insert(fuelLogToRow(log, uid)).then(({ error }) => {
+      if (error) console.warn('[Supabase] insert fuel_log error:', error.message);
+    });
+  };
+
+  const sbDeleteFuelLog = (logId) => {
+    const uid = userIdRef.current;
+    if (!uid) return;
+    supabase.from('fuel_logs').delete().eq('id', logId).then(({ error }) => {
+      if (error) console.warn('[Supabase] delete fuel_log error:', error.message);
+    });
+  };
+
+  // ── Derived state ────────────────────────────────────────────────────────────
 
   // Derived: Current Active Vehicle
   const activeVehicle = useMemo(() => {
@@ -111,19 +441,21 @@ export function useGarageStore() {
   /** Quick update vehicle odometer */
   const updateOdometer = useCallback((vehicleId, newOdoKm) => {
     const odoValue = Math.max(0, Math.round(Number(newOdoKm) || 0));
-    setGarageData((prev) => ({
-      ...prev,
-      vehicles: prev.vehicles.map((v) =>
+    setGarageData((prev) => {
+      const updated = prev.vehicles.map((v) =>
         v.id === vehicleId
           ? { ...v, currentOdo: odoValue, updatedAt: new Date().toISOString() }
           : v
-      ),
-    }));
-  }, []);
+      );
+      const vehicle = updated.find((v) => v.id === vehicleId);
+      if (vehicle) sbUpsertVehicle(vehicle);
+      return { ...prev, vehicles: updated };
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Add a new vehicle with automatic preset components initialization */
   const addVehicle = useCallback((vehiclePayload) => {
-    const id = `veh_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+    const id = generateUUID();
     const category = vehiclePayload.category || 'CAR';
     const currentOdo = Math.max(0, Number(vehiclePayload.currentOdo) || 0);
 
@@ -163,8 +495,8 @@ export function useGarageStore() {
 
     // Auto-populate default components for this category
     const presets = COMPONENT_PRESETS[category] || [];
-    const defaultComponents = presets.map((preset, idx) => ({
-      id: `comp_${Date.now()}_${idx}`,
+    const defaultComponents = presets.map((preset) => ({
+      id: generateUUID(),
       vehicleId: id,
       key: preset.key,
       name: preset.name,
@@ -184,20 +516,26 @@ export function useGarageStore() {
       components: [...prev.components, ...defaultComponents],
     }));
 
+    // Supabase sync
+    sbUpsertVehicle(newVehicle);
+    sbUpsertComponents(defaultComponents);
+
     return id;
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Update vehicle metadata */
   const updateVehicle = useCallback((vehicleId, partialData) => {
-    setGarageData((prev) => ({
-      ...prev,
-      vehicles: prev.vehicles.map((v) =>
+    setGarageData((prev) => {
+      const updated = prev.vehicles.map((v) =>
         v.id === vehicleId
           ? { ...v, ...partialData, updatedAt: new Date().toISOString() }
           : v
-      ),
-    }));
-  }, []);
+      );
+      const vehicle = updated.find((v) => v.id === vehicleId);
+      if (vehicle) sbUpsertVehicle(vehicle);
+      return { ...prev, vehicles: updated };
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Delete vehicle and cascade delete related components, service logs, and fuel logs */
   const deleteVehicle = useCallback((vehicleId) => {
@@ -208,6 +546,8 @@ export function useGarageStore() {
           ? remainingVehicles[0]?.id || ''
           : prev.activeVehicleId;
 
+      sbDeleteVehicle(vehicleId); // Supabase cascade handles children
+
       return {
         ...prev,
         activeVehicleId: nextActiveId,
@@ -217,11 +557,11 @@ export function useGarageStore() {
         fuelLogs: (prev.fuelLogs || []).filter((f) => f.vehicleId !== vehicleId),
       };
     });
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Add single component */
   const addComponent = useCallback((componentPayload) => {
-    const id = `comp_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+    const id = generateUUID();
     const newComponent = {
       id,
       vehicleId: componentPayload.vehicleId,
@@ -240,26 +580,30 @@ export function useGarageStore() {
       ...prev,
       components: [...prev.components, newComponent],
     }));
+    sbUpsertComponents([newComponent]);
     return id;
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Update component */
   const updateComponent = useCallback((componentId, partialData) => {
-    setGarageData((prev) => ({
-      ...prev,
-      components: prev.components.map((c) =>
+    setGarageData((prev) => {
+      const updated = prev.components.map((c) =>
         c.id === componentId ? { ...c, ...partialData } : c
-      ),
-    }));
-  }, []);
+      );
+      const comp = updated.find((c) => c.id === componentId);
+      if (comp) sbUpsertComponents([comp]);
+      return { ...prev, components: updated };
+    });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Delete component */
   const deleteComponent = useCallback((componentId) => {
+    sbDeleteComponent(componentId);
     setGarageData((prev) => ({
       ...prev,
       components: prev.components.filter((c) => c.id !== componentId),
     }));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Reset / Servis Sekarang on a single component:
@@ -289,7 +633,7 @@ export function useGarageStore() {
         );
 
         // 2. Automatically generate a Service Log entry
-        const logId = `log_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+        const logId = generateUUID();
         const newLog = {
           id: logId,
           vehicleId: component.vehicleId,
@@ -303,6 +647,11 @@ export function useGarageStore() {
           replacedComponentIds: [componentId],
         };
 
+        // Supabase sync
+        const updComp = updatedComponents.find((c) => c.id === componentId);
+        if (updComp) sbUpsertComponents([updComp]);
+        sbInsertServiceLog(newLog);
+
         return {
           ...prev,
           components: updatedComponents,
@@ -310,14 +659,14 @@ export function useGarageStore() {
         };
       });
     },
-    []
+    [] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   /**
    * Add a new service log with multi-component auto-reset execution
    */
   const addServiceLog = useCallback((logPayload) => {
-    const id = `log_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+    const id = generateUUID();
     const newLog = {
       id,
       vehicleId: logPayload.vehicleId,
@@ -364,6 +713,15 @@ export function useGarageStore() {
           : v
       );
 
+      // Supabase sync
+      sbInsertServiceLog(newLog);
+      const resetComps = components.filter((c) => newLog.replacedComponentIds.includes(c.id));
+      if (resetComps.length > 0) sbUpsertComponents(resetComps);
+      const updVehicle = updatedVehicles.find((v) => v.id === newLog.vehicleId);
+      if (updVehicle && newLog.odometer > (prev.vehicles.find((v) => v.id === newLog.vehicleId)?.currentOdo || 0)) {
+        sbUpsertVehicle(updVehicle);
+      }
+
       return {
         ...prev,
         vehicles: updatedVehicles,
@@ -373,7 +731,7 @@ export function useGarageStore() {
     });
 
     return id;
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
    * Populate missing standard presets for a vehicle (e.g. 14 granular motor components)
@@ -387,13 +745,13 @@ export function useGarageStore() {
       const existing = prev.components.filter((c) => c.vehicleId === vehicleId);
       const newItems = [];
 
-      presets.forEach((preset, idx) => {
+      presets.forEach((preset) => {
         const exists = existing.some(
           (c) => (c.key && c.key === preset.key) || c.name.toLowerCase() === preset.name.toLowerCase()
         );
         if (!exists) {
           newItems.push({
-            id: `comp_${Date.now()}_${idx}`,
+            id: generateUUID(),
             vehicleId,
             key: preset.key,
             name: preset.name,
@@ -410,24 +768,27 @@ export function useGarageStore() {
 
       if (newItems.length === 0) return prev;
 
+      sbUpsertComponents(newItems);
+
       return {
         ...prev,
         components: [...prev.components, ...newItems],
       };
     });
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Delete a service log */
   const deleteServiceLog = useCallback((logId) => {
+    sbDeleteServiceLog(logId);
     setGarageData((prev) => ({
       ...prev,
       serviceLogs: prev.serviceLogs.filter((l) => l.id !== logId),
     }));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Add fuel log */
   const addFuelLog = useCallback((fuelPayload) => {
-    const id = `fuel_${Date.now()}_${Math.random().toString(36).substr(2, 4)}`;
+    const id = generateUUID();
     const newFuel = {
       id,
       vehicleId: fuelPayload.vehicleId,
@@ -447,6 +808,8 @@ export function useGarageStore() {
           : v
       );
 
+      sbInsertFuelLog(newFuel);
+
       return {
         ...prev,
         vehicles: updatedVehicles,
@@ -455,15 +818,16 @@ export function useGarageStore() {
     });
 
     return id;
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Delete fuel log */
   const deleteFuelLog = useCallback((fuelId) => {
+    sbDeleteFuelLog(fuelId);
     setGarageData((prev) => ({
       ...prev,
       fuelLogs: (prev.fuelLogs || []).filter((f) => f.id !== fuelId),
     }));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Export all garage data to downloadable JSON file */
   const exportGarageBackupJSON = useCallback(() => {
@@ -546,5 +910,6 @@ export function useGarageStore() {
     exportGarageBackupJSON,
     importGarageBackupJSON,
     resetToSampleData,
+    initStore,
   };
 }

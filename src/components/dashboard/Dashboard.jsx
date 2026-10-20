@@ -18,6 +18,7 @@ import {
   Fuel,
   Weight,
   Layers,
+  RotateCcw,
 } from 'lucide-react';
 import {
   calculateComponentHealth,
@@ -353,25 +354,9 @@ export default function Dashboard({
           </div>
         </div>
       )}
-                    <span>{comp.health.percentage}%</span>
-                  </div>
-                </div>
-
-                <button
-                  onClick={() => onResetComponent(comp.id)}
-                  className="w-full py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-[11px] font-mono font-semibold transition flex items-center justify-center gap-1 border border-slate-700"
-                >
-                  <CheckCircle2 className="w-3 h-3 text-emerald-400" />
-                  <span>Servis Sekarang</span>
-                </button>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* 4. Recent Maintenance Logbook Activity */}
-      <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 space-y-4">
+      <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 shadow-lg space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-emerald-400" />
@@ -393,41 +378,83 @@ export default function Dashboard({
             Belum ada catatan servis untuk kendaraan ini.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 text-[10px] font-mono text-slate-400 uppercase">
-                  <th className="pb-2.5 font-semibold">Tanggal</th>
-                  <th className="pb-2.5 font-semibold">Odometer</th>
-                  <th className="pb-2.5 font-semibold">Servis & Pekerjaan</th>
-                  <th className="pb-2.5 font-semibold">Bengkel / Tempat</th>
-                  <th className="pb-2.5 font-semibold text-right">Biaya (Rp)</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 font-mono">
-                {activeServiceLogs.slice(0, 4).map((log) => (
-                  <tr key={log.id} className="hover:bg-slate-800/30 transition">
-                    <td className="py-3 text-slate-300 whitespace-nowrap">
-                      {formatDate(log.date)}
-                    </td>
-                    <td className="py-3 text-slate-300 font-bold whitespace-nowrap">
-                      {formatKm(log.odometer)}
-                    </td>
-                    <td className="py-3 text-white max-w-xs truncate font-sans">
-                      <div className="font-semibold text-xs text-white">{log.title}</div>
-                      <div className="text-[10px] text-slate-400 truncate">{log.notes || '-'}</div>
-                    </td>
-                    <td className="py-3 text-slate-400 whitespace-nowrap font-sans">
-                      {log.workshop || 'DIY / Bengkel'}
-                    </td>
-                    <td className="py-3 text-right text-emerald-400 font-bold whitespace-nowrap">
-                      {formatRupiah(log.costRp)}
-                    </td>
+          <>
+            {/* Desktop Table View (>= md) */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-800 text-[10px] font-mono text-slate-400 uppercase">
+                    <th className="pb-2.5 font-semibold">Tanggal</th>
+                    <th className="pb-2.5 font-semibold">Odometer</th>
+                    <th className="pb-2.5 font-semibold">Servis & Pekerjaan</th>
+                    <th className="pb-2.5 font-semibold">Bengkel / Tempat</th>
+                    <th className="pb-2.5 font-semibold text-right">Biaya (Rp)</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60 font-mono">
+                  {activeServiceLogs.slice(0, 4).map((log) => (
+                    <tr key={log.id} className="hover:bg-slate-800/30 transition">
+                      <td className="py-3 text-slate-300 whitespace-nowrap">
+                        {formatDate(log.date)}
+                      </td>
+                      <td className="py-3 text-slate-300 font-bold whitespace-nowrap">
+                        {formatKm(log.odometer)}
+                      </td>
+                      <td className="py-3 text-white max-w-xs truncate font-sans">
+                        <div className="font-semibold text-xs text-white">{log.title}</div>
+                        <div className="text-[10px] text-slate-400 truncate">{log.notes || '-'}</div>
+                      </td>
+                      <td className="py-3 text-slate-400 whitespace-nowrap font-sans">
+                        {log.workshop || 'DIY / Bengkel'}
+                      </td>
+                      <td className="py-3 text-right text-emerald-400 font-bold whitespace-nowrap">
+                        {formatRupiah(log.costRp)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Vertical Timeline Cards (< md) */}
+            <div className="md:hidden space-y-3">
+              {activeServiceLogs.slice(0, 4).map((log) => (
+                <div
+                  key={log.id}
+                  className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/90 relative pl-4 space-y-2"
+                >
+                  <div className="absolute left-0 top-3 bottom-3 w-1 rounded-r bg-emerald-500/70" />
+
+                  <div className="flex items-center justify-between text-[11px] font-mono">
+                    <span className="text-slate-400">{formatDate(log.date)}</span>
+                    <span className="font-bold text-slate-200 bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700/60">
+                      {formatKm(log.odometer)}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-semibold text-white leading-snug">
+                      {log.title}
+                    </h4>
+                    {log.notes && (
+                      <p className="text-xs text-slate-400 mt-0.5 line-clamp-2 font-sans">
+                        {log.notes}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between pt-1 border-t border-slate-800/60 text-xs">
+                    <span className="text-[11px] font-mono text-slate-500">
+                      {log.workshop || 'DIY / Bengkel'}
+                    </span>
+                    <span className="font-mono font-bold text-emerald-400">
+                      {formatRupiah(log.costRp)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </motion.div>

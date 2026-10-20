@@ -11,6 +11,7 @@ import {
   Bike,
 } from 'lucide-react';
 import VehicleSelector from './VehicleSelector';
+import UserMenu from '../auth/UserMenu';
 import { calculateTaxStatus } from '../../utils/calculators';
 
 export default function Header({
@@ -26,7 +27,7 @@ export default function Header({
   const stnkStatus = isMotorized ? calculateTaxStatus(activeVehicle.stnkExpiryDate) : null;
 
   return (
-    <header className="border-b border-slate-800 bg-slate-900/90 backdrop-blur sticky top-0 z-30 px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
+    <header className="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-2xl sticky top-0 z-30 px-4 sm:px-6 py-3.5 flex items-center justify-between gap-4">
       {/* Left: Mobile hamburger & Vehicle Selector */}
       <div className="flex items-center gap-3">
         <button
@@ -82,6 +83,9 @@ export default function Header({
           <HardDrive className="w-3 h-3 text-emerald-500" />
           <span className="hidden xl:inline">LOCAL STORAGE</span>
         </div>
+
+        {/* User Account / Sign Out Dropdown */}
+        <UserMenu />
       </div>
     </header>
   );

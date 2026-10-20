@@ -90,39 +90,44 @@ export default function AddVehicleModal({ isOpen, onClose, onAddVehicle }) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4 bg-black/80 backdrop-blur-md">
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 15 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            initial={{ opacity: 0, y: 40, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 40, scale: 0.96 }}
             transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-            className="w-full max-w-xl rounded-2xl bg-slate-900/90 backdrop-blur-2xl border border-slate-700/80 shadow-2xl overflow-hidden my-8 relative"
+            className="w-full max-w-xl rounded-t-3xl md:rounded-2xl max-h-[92vh] md:max-h-[88vh] flex flex-col bg-slate-900/95 md:bg-slate-900/90 backdrop-blur-2xl border-t md:border border-slate-700/80 shadow-2xl overflow-hidden relative"
           >
-        {/* Header */}
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              <Plus className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-sm text-white">Tambah Kendaraan Baru</h3>
-              <p className="text-[11px] text-slate-400">
-                Pilih kategori dan lengkapi spesifikasi teknis
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
+            {/* Grab handle for mobile bottom sheet */}
+            <div className="w-12 h-1 bg-slate-700 rounded-full mx-auto mt-2.5 mb-1 md:hidden shrink-0" />
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 space-y-4">
-          {/* Category Selector Tabs */}
-          <div>
+            {/* Header */}
+            <div className="p-4 border-b border-slate-800 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <Plus className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-sm text-white">Tambah Kendaraan Baru</h3>
+                  <p className="text-[11px] text-slate-400">
+                    Pilih kategori dan lengkapi spesifikasi teknis
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden relative z-10">
+              {/* Scrollable Body */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-4">
+                {/* Category Selector Tabs */}
+                <div>
             <label className="block text-[11px] font-mono uppercase tracking-wider text-slate-400 mb-2">
               Kategori Kendaraan
             </label>
@@ -206,6 +211,7 @@ export default function AddVehicleModal({ isOpen, onClose, onAddVehicle }) {
               </label>
               <input
                 type="number"
+                inputMode="numeric"
                 min="1970"
                 max="2035"
                 value={year}
@@ -222,6 +228,7 @@ export default function AddVehicleModal({ isOpen, onClose, onAddVehicle }) {
             </label>
             <input
               type="number"
+              inputMode="numeric"
               min="0"
               required
               value={currentOdo}
@@ -300,6 +307,7 @@ export default function AddVehicleModal({ isOpen, onClose, onAddVehicle }) {
                   </label>
                   <input
                     type="number"
+                    inputMode="numeric"
                     min="1"
                     value={tankCapacityLiters}
                     onChange={(e) => setTankCapacityLiters(e.target.value)}
@@ -352,6 +360,7 @@ export default function AddVehicleModal({ isOpen, onClose, onAddVehicle }) {
                   </label>
                   <input
                     type="number"
+                    inputMode="numeric"
                     min="20"
                     max="60"
                     value={tireWidthMm}
@@ -366,6 +375,7 @@ export default function AddVehicleModal({ isOpen, onClose, onAddVehicle }) {
                   </label>
                   <input
                     type="number"
+                    inputMode="numeric"
                     min="30"
                     max="150"
                     value={riderWeightKg}
@@ -380,6 +390,7 @@ export default function AddVehicleModal({ isOpen, onClose, onAddVehicle }) {
                   </label>
                   <input
                     type="number"
+                    inputMode="decimal"
                     step="0.1"
                     min="4"
                     max="30"
@@ -418,27 +429,28 @@ export default function AddVehicleModal({ isOpen, onClose, onAddVehicle }) {
               className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-white text-xs focus:outline-none focus:border-emerald-500 transition"
             />
           </div>
+        </div>
 
-          {/* Action Buttons */}
-          <div className="pt-2 flex items-center justify-end gap-2.5">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold font-mono transition flex items-center gap-1.5 shadow-lg shadow-emerald-500/10"
-            >
-              <Check className="w-3.5 h-3.5" />
-              <span>Daftarkan Kendaraan</span>
-            </button>
-          </div>
-        </form>
-      </motion.div>
-    </div>
+        {/* Sticky Action Buttons */}
+        <div className="sticky bottom-0 bg-slate-900/95 backdrop-blur-md pt-3 pb-4 md:pb-3 px-5 border-t border-slate-800/80 flex items-center justify-end gap-2.5 shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium transition"
+          >
+            Batal
+          </button>
+          <button
+            type="submit"
+            className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold font-mono transition flex items-center gap-1.5 shadow-lg shadow-emerald-500/10 active:scale-95"
+          >
+            <Check className="w-3.5 h-3.5" />
+            <span>Daftarkan Kendaraan</span>
+          </button>
+        </div>
+      </form>
+    </motion.div>
+  </div>
   )}
 </AnimatePresence>
   );

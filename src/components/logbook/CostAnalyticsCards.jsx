@@ -56,10 +56,10 @@ export default function CostAnalyticsCards({ vehicle, serviceLogs }) {
       {/* 3 Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Total Cost */}
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between shadow-md">
+        <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 shadow-lg hover:shadow-emerald-500/5 hover:border-slate-700/80 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-xs font-mono uppercase tracking-wider">Total Biaya Servis</span>
-            <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
               <Wallet className="w-4 h-4" />
             </div>
           </div>
@@ -74,10 +74,10 @@ export default function CostAnalyticsCards({ vehicle, serviceLogs }) {
         </div>
 
         {/* Cost per km */}
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between shadow-md">
+        <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 shadow-lg hover:shadow-emerald-500/5 hover:border-slate-700/80 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-xs font-mono uppercase tracking-wider">Biaya Operasional / Km</span>
-            <div className="p-2 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20">
+            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
               <TrendingDown className="w-4 h-4" />
             </div>
           </div>
@@ -97,10 +97,10 @@ export default function CostAnalyticsCards({ vehicle, serviceLogs }) {
         </div>
 
         {/* Average per Service Event */}
-        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col justify-between shadow-md">
+        <div className="p-5 rounded-2xl bg-slate-900/60 backdrop-blur-xl border border-slate-800/80 shadow-lg hover:shadow-emerald-500/5 hover:border-slate-700/80 transition-all flex flex-col justify-between">
           <div className="flex items-center justify-between text-slate-400 mb-2">
             <span className="text-xs font-mono uppercase tracking-wider">Rata-rata Per Servis</span>
-            <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+            <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
               <Receipt className="w-4 h-4" />
             </div>
           </div>

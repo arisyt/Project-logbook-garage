@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import { Calendar, AlertTriangle, CheckCircle2, AlertCircle, Edit2, Check, X, ShieldCheck } from 'lucide-react';
-import { calculateTaxStatus, formatDate } from '../../utils/calculators';
+import { calculateTaxStatus, formatDate, parseCurrencyInput, formatRupiah } from '../../utils/calculators';
 
 export default function TaxReminderCard({ vehicle, onUpdateVehicle, onAddServiceLog }) {
   const [isEditing, setIsEditing] = useState(false);
   const [stnkDate, setStnkDate] = useState(vehicle?.stnkExpiryDate || '');
   const [plateDate, setPlateDate] = useState(vehicle?.plateExpiryDate || '');
+  const [isTaxInputOpen, setIsTaxInputOpen] = useState(false);
+  const [taxAmountStr, setTaxAmountStr] = useState('1250000');
 
   if (!vehicle || vehicle.category === 'BICYCLE') return null;
 
@@ -22,7 +24,7 @@ export default function TaxReminderCard({ vehicle, onUpdateVehicle, onAddService
   };
 
   const handleLogTaxPayment = () => {
-    const cost = prompt('Masukkan nominal pembayaran pajak PKB STNK (Rp):', '1250000');
+    const cost = parseCurrencyInput(taxAmountStr);
     if (!cost) return;
 
     onAddServiceLog({
@@ -31,7 +33,7 @@ export default function TaxReminderCard({ vehicle, onUpdateVehicle, onAddService
       odometer: vehicle.currentOdo,
       category: 'TAX_DOCUMENT',
       title: `Pembayaran Pajak STNK ${vehicle.plateNumber}`,
-      costRp: Number(cost) || 0,
+      costRp: cost,
       workshop: 'Samsat / SIGNAL',
       notes: 'Pajak STNK tahunan dibayarkan lunas.',
       replacedComponentIds: [],
@@ -45,6 +47,9 @@ export default function TaxReminderCard({ vehicle, onUpdateVehicle, onAddService
       onUpdateVehicle(vehicle.id, { stnkExpiryDate: nextExp });
       setStnkDate(nextExp);
     }
+
+    setIsTaxInputOpen(false);
+    setTaxAmountStr('1250000');
   };
 
   const getStatusBadge = (statusObj) => {
@@ -162,13 +167,48 @@ export default function TaxReminderCard({ vehicle, onUpdateVehicle, onAddService
               </div>
             </div>
 
-            <button
-              onClick={handleLogTaxPayment}
-              className="mt-3 w-full py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-emerald-400 text-xs font-mono font-semibold transition border border-slate-800 flex items-center justify-center gap-1.5"
-            >
-              <CheckCircle2 className="w-3.5 h-3.5" />
-              <span>Sudah Bayar? Perpanjang +1 Tahun</span>
-            </button>
+            {isTaxInputOpen ? (
+              <div className="mt-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={taxAmountStr}
+                    onChange={(e) => setTaxAmountStr(e.target.value)}
+                    placeholder="Nominal Rp, contoh: 1250000"
+                    className="flex-1 px-2.5 py-1.5 rounded-lg bg-slate-900 border border-emerald-500/40 text-emerald-400 font-mono text-xs focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+                {taxAmountStr && (
+                  <div className="text-[10px] font-mono text-emerald-400">
+                    Format: {formatRupiah(parseCurrencyInput(taxAmountStr))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleLogTaxPayment}
+                    className="flex-1 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-mono font-bold flex items-center justify-center gap-1 transition"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Simpan &amp; Perpanjang</span>
+                  </button>
+                  <button
+                    onClick={() => setIsTaxInputOpen(false)}
+                    className="px-3 py-1.5 rounded-lg bg-slate-800 text-slate-300 text-xs font-mono transition"
+                  >
+                    Batal
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsTaxInputOpen(true)}
+                className="mt-3 w-full py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-emerald-400 text-xs font-mono font-semibold transition border border-slate-800 flex items-center justify-center gap-1.5"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Sudah Bayar? Perpanjang +1 Tahun</span>
+              </button>
+            )}
           </div>
 
           {/* 5-Year Plate Box */}
